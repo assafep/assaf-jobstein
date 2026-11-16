@@ -1,0 +1,15 @@
+.gradle/
+**/build/
+.idea/
+*.iml
+.env
+.env.*
+!.env.example
+credentials/
+secrets/
+*.pem
+*.key
+*oauth-client*.json
+*token*.json
+*.pdf
+local-config/
