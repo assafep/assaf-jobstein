@@ -80,23 +80,23 @@ final class SandboxService {
         return value;
     }
     private static String slug(String role){return io.github.assafep.jobstein.storage.UserProfileService.slug(role);}
-    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault,Path resume,boolean approveDescriptor)throws Exception{
+    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault,Path resume,boolean approveDescriptor,String simulateFailure)throws Exception{
         out.println("SANDBOX — simulated data; no external API calls");
         if(op.equals("onboard")){
+            var failure=SandboxFailure.parse(simulateFailure);
             environments.create("sandbox");
             var workflow=new OnboardingService(new ProvisioningStateRepository(new ConfigurationRepository(workspaceRoot.resolve("onboarding"))),out::println);
             workflow.run(new OnboardingService.Steps(
-                ()->repository.save("mock-google-project",Map.of("projectId","jobstein-sandbox")),
-                ()->repository.save("mock-google-auth",Map.of("subject","synthetic-user")),
-                this::initializeAi,
-                ()->users().initialize("Example Applicant"),
-                ()->initializeProfile("Software Engineer",null)
+                failure.wrap("google-configure",()->repository.save("mock-google-project",Map.of("projectId","jobstein-sandbox")),out::println),
+                failure.wrap("google-authorize",()->repository.save("mock-google-auth",Map.of("subject","synthetic-user")),out::println),
+                failure.wrap("ai-configure",this::initializeAi,out::println),
+                failure.wrap("user-initialize",()->users().initialize("Example Applicant"),out::println),
+                failure.wrap("first-profile",()->initializeProfile("Software Engineer",null),out::println)
             ));
             out.println("Simulated GCP, OAuth, AI, Drive, user and first profile initialized");
-            return 0;
+            return execute("doctor",null,null,null,null,Map.of(),false,null,false,null);
         }
         var service=users();
-        var ai=aiConfig();
         switch(op){
             case "doctor" -> {
                 var report=new DoctorService().inspect(List.of(
@@ -117,14 +117,14 @@ final class SandboxService {
             }
             case "google status","google validate","google configure","google authorize" -> out.println("Simulated Google project: jobstein-sandbox");
             case "ai provider list" -> aiService().catalog().ids().stream().sorted().forEach(out::println);
-            case "ai provider models" -> {var c=selected(ai,integration);aiService().adapter(c).models(c).forEach(out::println);}
-            case "ai integration list" -> new TreeMap<>(ai.integrations()).forEach((id,value)->out.println(id+" "+value.provider()+" "+value.configuration().get("model")));
-            case "ai integration show" -> out.println(selected(ai,integration));
-            case "ai integration validate" -> {var c=selected(ai,integration);aiService().catalog().validate(c);aiService().adapter(c).validate(c);out.println("Simulated integration valid");}
+            case "ai provider models" -> {var c=selected(aiConfig(),integration);aiService().adapter(c).models(c).forEach(out::println);}
+            case "ai integration list" -> new TreeMap<>(aiConfig().integrations()).forEach((id,value)->out.println(id+" "+value.provider()+" "+value.configuration().get("model")));
+            case "ai integration show" -> out.println(selected(aiConfig(),integration));
+            case "ai integration validate" -> {var c=selected(aiConfig(),integration);aiService().catalog().validate(c);aiService().adapter(c).validate(c);out.println("Simulated integration valid");}
             case "ai validate" -> {aiService().validate();out.println("Simulated configuration valid");}
             case "ai configure","ai integration create","ai integration update","ai integration remove" -> changeAi(op,integration,fields,makeDefault);
-            case "ai agent list" -> {out.println("Default: "+ai.defaultIntegration());new TreeMap<>(ai.agentBindings()).forEach((a,i)->out.println(a+" -> "+i));}
-            case "ai agent show" -> out.println(new AiIntegrationResolver(ai).resolve(require(agent,"--agent")).id());
+            case "ai agent list" -> {var ai=aiConfig();out.println("Default: "+ai.defaultIntegration());new TreeMap<>(ai.agentBindings()).forEach((a,i)->out.println(a+" -> "+i));}
+            case "ai agent show" -> out.println(new AiIntegrationResolver(aiConfig()).resolve(require(agent,"--agent")).id());
             case "ai agent configure" -> aiService().bind(require(agent,"--agent"),require(integration,"--integration"));
             case "ai agent reset" -> aiService().bind(require(agent,"--agent"),null);
             case "user show" -> out.println(service.user());

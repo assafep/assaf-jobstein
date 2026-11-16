@@ -35,3 +35,15 @@ jobstein profile resume history --env sandbox --profile software.engineer
 jobstein profile descriptor regenerate --env sandbox --profile software.engineer
 jobstein profile activate --env sandbox --profile software.engineer --approve-descriptor
 ```
+
+## Failure and recovery
+
+On a fresh sandbox, run:
+
+```bash
+jobstein onboard --env sandbox --simulate-failure ai-configure
+jobstein doctor --env sandbox
+jobstein onboard --env sandbox
+```
+
+The first invocation fails before executing the specified checkpoint. Doctor reports incomplete provisioning. The final invocation resumes from the failed checkpoint. Supported checkpoints: google-configure, google-authorize, ai-configure, user-initialize, first-profile. Already completed checkpoints are skipped; the flag is invocation-local and rejected for live environments and other commands. On an already provisioned sandbox, no completed checkpoint is deliberately rerun.

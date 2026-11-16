@@ -35,6 +35,7 @@ final class AdminCommand implements Callable<Integer> {
     @CommandLine.Option(names="--allow-ai-processing") boolean allowAi;
     @CommandLine.Option(names="--approve-descriptor") boolean approveDescriptor;
     @CommandLine.Option(names="--non-interactive") boolean nonInteractive;
+    @CommandLine.Option(names="--simulate-failure",description="Sandbox-only onboarding checkpoint failure") String simulateFailure;
     private ConfigurationRepository config;
     private SecretStore secrets;
     private EnvironmentService environments;
@@ -170,7 +171,8 @@ final class AdminCommand implements Callable<Integer> {
     public Integer call(){
         try{
             environments=new EnvironmentService(Path.of(System.getProperty("user.home"),".config","jobstein","environments"));
-            if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor);
+            if(simulateFailure!=null&&(!"sandbox".equals(env)||!operation.equals("onboard")))throw new IllegalArgumentException("Failure injection is only available for sandbox onboarding");
+            if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor,simulateFailure);
             directory=environments.directory(env);
             if(!operation.equals("onboard"))environments.validate(env);
             config=new ConfigurationRepository(directory);

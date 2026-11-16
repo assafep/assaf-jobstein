@@ -6,6 +6,19 @@ trap 'rm -rf "$home"' EXIT
 export JAVA_OPTS="${JAVA_OPTS:-} -Duser.home=$home"
 cli=./build/install/jobstein/bin/jobstein
 "$cli" --help
+if "$cli" onboard --env sandbox --non-interactive --simulate-failure ai-configure > "$home/failure.log"; then
+  echo 'Expected simulated AI configuration failure' >&2
+  exit 1
+fi
+grep 'SIMULATED FAILURE: ai-configure' "$home/failure.log"
+if "$cli" doctor --env sandbox; then
+  echo 'Expected incomplete sandbox diagnostics to fail' >&2
+  exit 1
+fi
+"$cli" onboard --env sandbox --non-interactive > "$home/recovery.log"
+grep 'Previously completed: google-configure' "$home/recovery.log"
+grep 'Previously completed: google-authorize' "$home/recovery.log"
+grep 'Completed: ai-configure' "$home/recovery.log"
 "$cli" onboard --env sandbox --non-interactive
 "$cli" onboard --env sandbox --non-interactive
 "$cli" doctor --env sandbox
