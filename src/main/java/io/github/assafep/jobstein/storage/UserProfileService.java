@@ -140,6 +140,16 @@ public final class UserProfileService {
         var state=get(slug);if(active)descriptor(slug);
         saveProfile(new ProfileState(withStatus(state.profile(),active?ApplicantProfile.Status.ACTIVE:ApplicantProfile.Status.INACTIVE),state.resumes(),state.descriptorId()));
     }
+    public ApplicationRegistry applicationRegistry() {
+        return new ApplicationRegistry(new ApplicationRegistry.Store(){
+            public ObjectNode read()throws Exception {
+                var node=drive.readJson(resource("user/registry"));
+                if(!(node instanceof ObjectNode object))throw new IOException("Invalid application registry");
+                return object;
+            }
+            public void write(ObjectNode state)throws Exception {drive.updateJson(resource("user/registry"),state);}
+        });
+    }
     public void validateUser()throws Exception{
         if(!user().googleAccountSubject().equals(drive.userInfo().path("sub").asText()))throw new IOException("Google account mismatch");
         drive.readJson(resource("user/registry"));drive.readJson(resource("user/profiles-index"));
