@@ -178,7 +178,7 @@ final class AdminCommand implements Callable<Integer> {
     public Integer call(){
         try{
             environments=new EnvironmentService(Path.of(System.getProperty("user.home"),".config","jobstein","environments"));
-            if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault);
+            if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor);
             directory=environments.directory(env);
             if(!operation.equals("onboard"))environments.validate(env);
             config=new ConfigurationRepository(directory);

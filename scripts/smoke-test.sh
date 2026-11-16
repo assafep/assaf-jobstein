@@ -26,3 +26,14 @@ fi
 "$cli" ai agent reset --env sandbox --agent applicant-profile-generator
 "$cli" ai agent show --env sandbox --agent applicant-profile-generator | grep standard
 "$cli" ai integration remove --env sandbox --integration advanced
+"$cli" profile resume update --env sandbox --profile product.manager
+"$cli" profile list --env sandbox | grep 'product.manager RESUME_UPLOADED'
+if "$cli" profile descriptor validate --env sandbox --profile product.manager; then
+  echo 'Expected stale descriptor validation to fail' >&2
+  exit 1
+fi
+"$cli" profile descriptor regenerate --env sandbox --profile product.manager
+"$cli" profile list --env sandbox | grep 'product.manager AWAITING_REVIEW'
+"$cli" profile activate --env sandbox --profile product.manager --approve-descriptor
+"$cli" profile list --env sandbox | grep 'product.manager ACTIVE'
+"$cli" profile resume history --env sandbox --profile product.manager | grep 'synthetic resume 2'
