@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.assafep.jobstein.ai.*;
 import io.github.assafep.jobstein.config.ConfigurationRepository;
 import io.github.assafep.jobstein.domain.*;
-import io.github.assafep.jobstein.google.WorkspaceClient;
 import io.github.assafep.jobstein.provisioning.ResourceManifestRepository;
 import java.util.*;
 import java.nio.file.*;
@@ -14,15 +13,15 @@ public final class UserProfileService {
     private static final ObjectMapper JSON=new ObjectMapper();
     private final ConfigurationRepository repository;
     private final ResourceManifestRepository manifest;
-    private final WorkspaceClient drive;
-    private final AiService ai;
+    private final WorkspaceStorage drive;
+    private final AiExecution ai;
     private final String environment;
     public record ProfileState(ApplicantProfile profile, List<ResumeVersion> resumes, String descriptorId) {
         public ProfileState {resumes=List.copyOf(resumes);}
     }
     public record ResumeVersion(String id,String hash,String name){}
     public record Profiles(Map<String,ProfileState> entries){public Profiles{entries=Map.copyOf(entries);}}
-    public UserProfileService(ConfigurationRepository repository,WorkspaceClient drive,AiService ai,String environment){
+    public UserProfileService(ConfigurationRepository repository,WorkspaceStorage drive,AiExecution ai,String environment){
         this.repository=repository;this.manifest=new ResourceManifestRepository(repository);this.drive=drive;this.ai=ai;this.environment=environment;
     }
     public static String slug(String name){

@@ -4,7 +4,7 @@ import io.github.assafep.jobstein.security.SecretStore;
 import java.io.*;
 import java.util.*;
 
-public final class AiService {
+public final class AiService implements AiExecution {
     private final ConfigurationRepository repository;
     private final ProviderCatalog catalog;
     private final Map<String,AiProviderAdapter> adapters;

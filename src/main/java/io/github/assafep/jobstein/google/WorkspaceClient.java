@@ -8,7 +8,7 @@ import java.util.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 
-public final class WorkspaceClient {
+public final class WorkspaceClient implements io.github.assafep.jobstein.storage.WorkspaceStorage {
     private static final ObjectMapper JSON=new ObjectMapper();
     private final GoogleOAuth oauth;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
