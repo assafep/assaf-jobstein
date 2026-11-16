@@ -19,32 +19,20 @@ public final class Jobstein {
         public void run() { spec.commandLine().usage(spec.commandLine().getOut()); }
     }
 
-    @CommandLine.Command(mixinStandardHelpOptions = true)
-    static final class Pending implements java.util.concurrent.Callable<Integer> {
-        @CommandLine.Spec CommandLine.Model.CommandSpec spec;
-        @CommandLine.Option(names = "--env", defaultValue = "production")
-        String environment;
-        public Integer call() {
-            spec.commandLine().getErr().println(
-                spec.qualifiedName() + ": not implemented yet (environment: " + environment + ")");
-            return 3;
-        }
-    }
-
     static CommandLine group(String name) {
         return new CommandLine(new Root()).setCommandName(name);
     }
 
     static void addLeaves(CommandLine parent, String... names) {
         for (String name : names) {
-            parent.addSubcommand(name, new CommandLine(new Pending()).setCommandName(name));
+            parent.addSubcommand(name, new CommandLine(new AdminCommand(parent.getCommandName().equals("jobstein")?name:parent.getCommandSpec().qualifiedName(" ").replaceFirst("^jobstein ", "")+" "+name)).setCommandName(name));
         }
     }
 
     static void addGroup(CommandLine parent, String name, String... leaves) {
         CommandLine child = group(name);
-        addLeaves(child, leaves);
         parent.addSubcommand(name, child);
+        addLeaves(child, leaves);
     }
 
     public static CommandLine commandLine() {

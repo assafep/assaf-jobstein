@@ -14,12 +14,8 @@ class JobsteinTest {
         assertTrue(cli.getSubcommands().get("profile").getSubcommands().containsKey("descriptor"));
     }
 
-    @Test void unfinishedCommandsFailClosed() {
-        var cli = Jobstein.commandLine();
-        var error = new StringWriter();
-        cli.setErr(new PrintWriter(error));
-        assertEquals(3, cli.execute("onboard", "--env", "development"));
-        assertTrue(error.toString().contains("not implemented yet"));
+    @Test void nonInteractiveInvalidEnvironmentFails() {
+        assertNotEquals(0, Jobstein.commandLine().execute("doctor", "--env", "../bad", "--non-interactive"));
     }
 
     @Test void helpSucceeds() {
