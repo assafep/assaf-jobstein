@@ -1,0 +1,19 @@
+id: xai
+displayName: xAI Grok
+adapterType: xai-chat
+fields:
+  apiKey:
+    type: SECRET
+    required: true
+    displayName: API key
+  model:
+    type: STRING
+    required: true
+    displayName: Model ID
+  reasoningEffort:
+    type: STRING
+    required: false
+    displayName: Reasoning effort (model dependent)
+capabilities:
+  - textGeneration
+  - structuredOutput
