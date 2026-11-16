@@ -1,4 +1,4 @@
-package io.jobstein.cli;
+package io.github.assafep.jobstein.cli;
 
 import org.junit.jupiter.api.Test;
 import java.io.PrintWriter;

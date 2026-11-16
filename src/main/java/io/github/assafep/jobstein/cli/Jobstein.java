@@ -1,4 +1,4 @@
-package io.jobstein.cli;
+package io.github.assafep.jobstein.cli;
 
 import picocli.CommandLine;
 import java.io.PrintWriter;
