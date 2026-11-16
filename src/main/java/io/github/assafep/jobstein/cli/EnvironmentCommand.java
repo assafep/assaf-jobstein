@@ -21,7 +21,9 @@ final class EnvironmentCommand implements Callable<Integer> {
         try {
             var out = spec.commandLine().getOut();
             switch (operation) {
-                case "create" -> out.println(service.create(environment));
+                case "create" -> {
+                    try(var ignored=io.github.assafep.jobstein.environment.EnvironmentLock.acquire(service.directory(environment))){out.println(service.create(environment));}
+                }
                 case "list" -> service.list().forEach(out::println);
                 case "show" -> out.println(java.nio.file.Files.readString(service.validate(environment)));
                 case "validate" -> {
@@ -31,6 +33,8 @@ final class EnvironmentCommand implements Callable<Integer> {
                 default -> throw new IllegalStateException("Unknown environment operation");
             }
             return 0;
+        } catch (io.github.assafep.jobstein.environment.EnvironmentLock.BusyException e) {
+            spec.commandLine().getErr().println(e.getMessage());return 4;
         } catch (java.io.IOException | IllegalArgumentException e) {
             spec.commandLine().getErr().println(e.getMessage());
             return 1;

@@ -47,3 +47,7 @@ jobstein onboard --env sandbox
 ```
 
 The first invocation fails before executing the specified checkpoint. Doctor reports incomplete provisioning. The final invocation resumes from the failed checkpoint. Supported checkpoints: google-configure, google-authorize, ai-configure, user-initialize, first-profile. Already completed checkpoints are skipped; the flag is invocation-local and rejected for live environments and other commands. On an already provisioned sandbox, no completed checkpoint is deliberately rerun.
+
+## Concurrent commands
+
+Administrative commands acquire a non-blocking exclusive OS file lock per local environment. A competing command exits with code 4; retry after the first command finishes. The lock file is intentionally retained and the operating system releases locks when a process exits. This is local single-host protection, not a distributed Google Drive lock. Do not operate the same live environment from multiple machines.

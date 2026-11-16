@@ -172,6 +172,7 @@ final class AdminCommand implements Callable<Integer> {
         try{
             environments=new EnvironmentService(Path.of(System.getProperty("user.home"),".config","jobstein","environments"));
             if(simulateFailure!=null&&(!"sandbox".equals(env)||!operation.equals("onboard")))throw new IllegalArgumentException("Failure injection is only available for sandbox onboarding");
+            try(var ignored=io.github.assafep.jobstein.environment.EnvironmentLock.acquire(environments.directory(env))){
             if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor,simulateFailure);
             directory=environments.directory(env);
             if(!operation.equals("onboard"))environments.validate(env);
@@ -215,7 +216,9 @@ final class AdminCommand implements Callable<Integer> {
                 default:throw new IllegalStateException("Unknown operation");
             }
             return 0;
-        }catch(InterruptedException e){Thread.currentThread().interrupt();spec.commandLine().getErr().println("Interrupted");return 1;}
+            }
+        }catch(io.github.assafep.jobstein.environment.EnvironmentLock.BusyException e){spec.commandLine().getErr().println(e.getMessage());return 4;}
+        catch(InterruptedException e){Thread.currentThread().interrupt();spec.commandLine().getErr().println("Interrupted");return 1;}
         catch(Exception e){spec.commandLine().getErr().println("Operation failed: "+e.getClass().getSimpleName());return 1;}
     }
 }
