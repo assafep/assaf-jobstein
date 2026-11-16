@@ -138,41 +138,33 @@ final class AdminCommand implements Callable<Integer> {
             if(confirm("Approve descriptor and activate profile",approveDescriptor))service.activate(slug,true);
         }
     }
-    private interface Checked {void run()throws Exception;}
-    private boolean check(String label,Checked action){
-        try{action.run();out().println("PASS "+label);return true;}
-        catch(Exception e){out().println("FAIL "+label+" ("+e.getClass().getSimpleName()+")");return false;}
-    }
     private boolean doctor()throws Exception{
-        boolean ok=check("Local environment",()->environments.validate(env));
-        ok=check("GCP project and enabled APIs",()->new GcloudClient().verify(google().projectId()))&&ok;
-        ok=check("Google OAuth and Workspace read access",()->new WorkspaceClient(oauth()).validate())&&ok;
-        ok=check("AI integrations and model availability",()->ai().validate())&&ok;
-        ok=check("User identity and shared Drive state",()->users().validateUser())&&ok;
-        ok=check("Applicant profiles",()->{
-            var service=users();var profiles=service.profiles().entries();
-            if(profiles.isEmpty())throw new IOException("No profiles");
-            boolean active=false;
-            for(var state:profiles.values())if(state.profile().status()==io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE){service.descriptor(state.profile().slug());active=true;}
-            if(!active)throw new IOException("No active profile");
-        })&&ok;
-        out().println(ok?"Configured checks passed (no email sent)":"Environment not ready");
-        return ok;
-    }
-    private void step(ProvisioningStateRepository state,String id,Checked action)throws Exception{
-        if(state.completed(id)){out().println("Previously completed: "+id);return;}
-        state.record(id,ProvisioningStateRepository.Status.IN_PROGRESS);
-        try{action.run();state.record(id,ProvisioningStateRepository.Status.COMPLETED);}
-        catch(Exception e){state.record(id,ProvisioningStateRepository.Status.FAILED);throw e;}
+        var doctor=new io.github.assafep.jobstein.validation.DoctorService();
+        var report=doctor.inspect(List.of(
+            new io.github.assafep.jobstein.validation.DoctorService.Probe("Local environment",()->environments.validate(env)),
+            new io.github.assafep.jobstein.validation.DoctorService.Probe("GCP project and enabled APIs",()->new GcloudClient().verify(google().projectId())),
+            new io.github.assafep.jobstein.validation.DoctorService.Probe("Google OAuth and Workspace read access",()->new WorkspaceClient(oauth()).validate()),
+            new io.github.assafep.jobstein.validation.DoctorService.Probe("AI integrations and model availability",()->ai().validate()),
+            new io.github.assafep.jobstein.validation.DoctorService.Probe("User identity and shared Drive state",()->users().validateUser()),
+            new io.github.assafep.jobstein.validation.DoctorService.Probe("Applicant profiles",()->{
+                var service=users();boolean active=false;
+                for(var state:service.profiles().entries().values())if(state.profile().status()==io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE){service.descriptor(state.profile().slug());active=true;}
+                if(!active)throw new IOException("No active profile");
+            })
+        ));
+        report.checks().forEach(c->out().println(c.status()+" "+c.id()+" "+c.message()));
+        out().println(report.ready()?"Configured checks passed (no email sent)":"Environment not ready");
+        return report.ready();
     }
     private int onboard()throws Exception{
         environments.create(env);
-        var state=new ProvisioningStateRepository(config);
-        step(state,"google-configure",this::configureGoogle);
-        step(state,"google-authorize",this::authorize);
-        step(state,"ai-configure",()->{if(ai().existing().isEmpty())configureAi(false,true);ai().validate();});
-        step(state,"user-initialize",()->{var service=users();String existing=config.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).map(io.github.assafep.jobstein.domain.JobsteinUser::fullName).orElse(null);service.initialize(ask("Full name",name,existing));});
-        step(state,"first-profile",()->{createProfile();if(users().profiles().entries().values().stream().noneMatch(p->p.profile().status()==io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE))throw new IOException("Approve an applicant descriptor to continue");});
+        var workflow=new OnboardingService(new ProvisioningStateRepository(config),out()::println);
+        workflow.run(new OnboardingService.Steps(
+            this::configureGoogle,this::authorize,
+            ()->{if(ai().existing().isEmpty())configureAi(false,true);ai().validate();},
+            ()->{var service=users();String existing=config.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).map(io.github.assafep.jobstein.domain.JobsteinUser::fullName).orElse(null);service.initialize(ask("Full name",name,existing));},
+            ()->{createProfile();if(users().profiles().entries().values().stream().noneMatch(p->p.profile().status()==io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE))throw new IOException("Approve an applicant descriptor to continue");}
+        ));
         return doctor()?0:1;
     }
     public Integer call(){

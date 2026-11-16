@@ -8,6 +8,8 @@ import java.nio.file.*;
 import io.github.assafep.jobstein.storage.ResumeDocument;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.assafep.jobstein.ai.*;
+import io.github.assafep.jobstein.provisioning.*;
+import io.github.assafep.jobstein.validation.DoctorService;
 
 final class SandboxService {
     public record State(Map<String,String> profiles, Map<String,String> bindings) {
@@ -54,6 +56,9 @@ final class SandboxService {
         this.environments=environments; this.out=out;
         this.repository=new ConfigurationRepository(environments.directory("sandbox").resolve("simulation"));
     }
+    private void requireFixture(String name)throws IOException {
+        if(repository.load(name,Map.class).isEmpty())throw new IOException("Run sandbox onboarding to initialize fixtures");
+    }
     private State load() throws IOException {
         return repository.load("state",State.class).orElseThrow(()->new IOException("Run onboard --env sandbox first"));
     }
@@ -96,11 +101,18 @@ final class SandboxService {
         return value;
     }
     private static String slug(String role){return io.github.assafep.jobstein.storage.UserProfileService.slug(role);}
-    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault,Path resume,boolean approveDescriptor)throws IOException{
+    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault,Path resume,boolean approveDescriptor)throws Exception{
         out.println("SANDBOX — simulated data; no external API calls");
         if(op.equals("onboard")){
             environments.create("sandbox");
-            if(repository.load("state",State.class).isEmpty())save(new State(Map.of("software.engineer","ACTIVE"),Map.of()));
+            var workflow=new OnboardingService(new ProvisioningStateRepository(repository),out::println);
+            workflow.run(new OnboardingService.Steps(
+                ()->repository.save("mock-google-project",Map.of("projectId","jobstein-sandbox")),
+                ()->repository.save("mock-google-auth",Map.of("subject","synthetic-user")),
+                ()->saveAi(aiConfig()),
+                ()->repository.save("mock-user",Map.of("name","Example Applicant")),
+                ()->{if(repository.load("state",State.class).isEmpty())save(new State(Map.of("software.engineer","ACTIVE"),Map.of()));}
+            ));
             out.println("Simulated GCP, OAuth, AI, Drive, user and first profile initialized");
             return 0;
         }
@@ -110,12 +122,20 @@ final class SandboxService {
         var ai=aiConfig();
         switch(op){
             case "doctor" -> {
-                environments.validate("sandbox");
-                for(String label:List.of("Google project","OAuth","Workspace","AI integration","Drive registry"))out.println("SIMULATED "+label);
-                boolean active=profiles.containsValue("ACTIVE");
-                for(var entry:profiles.entrySet())if(entry.getValue().equals("ACTIVE"))validateResume(resumeState(entry.getKey()));
-                out.println(active?"PASS Sandbox fixture ready":"FAIL No active sandbox profile");
-                return active?0:1;
+                var report=new DoctorService().inspect(List.of(
+                    new DoctorService.Probe("Local environment",()->environments.validate("sandbox")),
+                    new DoctorService.Probe("SIMULATED Google project",()->requireFixture("mock-google-project")),
+                    new DoctorService.Probe("SIMULATED OAuth",()->requireFixture("mock-google-auth")),
+                    new DoctorService.Probe("SIMULATED AI integration",()->aiConfig()),
+                    new DoctorService.Probe("SIMULATED user",()->requireFixture("mock-user")),
+                    new DoctorService.Probe("Applicant profiles",()->{
+                        if(!profiles.containsValue("ACTIVE"))throw new IOException("No active sandbox profile");
+                        for(var entry:profiles.entrySet())if(entry.getValue().equals("ACTIVE"))validateResume(resumeState(entry.getKey()));
+                    })
+                ));
+                report.checks().forEach(c->out.println(c.status()+" "+c.id()+" "+c.message()));
+                out.println(report.ready()?"PASS Sandbox fixture ready":"FAIL Sandbox fixture not ready");
+                return report.ready()?0:1;
             }
             case "google status","google validate","google configure","google authorize" -> out.println("Simulated Google project: jobstein-sandbox");
             case "ai provider list" -> out.println("mock-xai");
