@@ -1,12 +1,11 @@
 package io.github.assafep.jobstein.cli;
 
 import picocli.CommandLine;
-import java.io.PrintWriter;
 import java.util.List;
 
 public final class Jobstein {
     private static final String[][] GROUPS = {
-        {"environment", "create", "list", "show", "validate"},
+        
         {"google", "configure", "authorize", "status", "validate"},
         {"ai", "configure", "validate"},
         {"user", "initialize", "show", "validate"},
@@ -54,6 +53,13 @@ public final class Jobstein {
         for (String[] group : GROUPS) {
             addGroup(root, group[0], List.of(group).subList(1, group.length).toArray(String[]::new));
         }
+        var home = java.nio.file.Path.of(System.getProperty("user.home"), ".config", "jobstein", "environments");
+        var environments = new io.github.assafep.jobstein.environment.EnvironmentService(home);
+        CommandLine env = group("environment");
+        for (String operation : List.of("create", "list", "show", "validate")) {
+            env.addSubcommand(operation, new CommandLine(new EnvironmentCommand(environments, operation)).setCommandName(operation));
+        }
+        root.addSubcommand("environment", env);
         CommandLine ai = root.getSubcommands().get("ai");
         addGroup(ai, "provider", "list", "models");
         addGroup(ai, "integration", "create", "update", "list", "show", "validate", "remove");
