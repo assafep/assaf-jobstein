@@ -5,6 +5,7 @@ repositories { mavenCentral() }
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }
 dependencies {
     implementation("info.picocli:picocli:4.7.6")
+    implementation("org.apache.pdfbox:pdfbox:3.0.4")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.18.3")
     implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.18.3")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
