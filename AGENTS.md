@@ -1,0 +1,2 @@
+# Development instructions
+Use Java 21, Gradle, Picocli, constructor injection and independently testable services. Keep CLI parsing separate from service orchestration. Never commit real secrets, resumes, tokens or personal data. Use synthetic test fixtures. Fail closed for unavailable integrations and do not report successful provisioning unless verified. Preserve user-wide deduplication and environment isolation. No operational automation in this milestone. See docs/architecture.md.
