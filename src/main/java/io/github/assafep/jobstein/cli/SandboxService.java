@@ -96,7 +96,7 @@ final class SandboxService {
         return value;
     }
     private static String slug(String role){return io.github.assafep.jobstein.storage.UserProfileService.slug(role);}
-    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault)throws IOException{
+    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault,Path resume,boolean approveDescriptor)throws IOException{
         out.println("SANDBOX — simulated data; no external API calls");
         if(op.equals("onboard")){
             environments.create("sandbox");
