@@ -10,9 +10,13 @@ public final class MockAiExecution implements AiExecution {
     @Override public AiConfiguration load(){return configuration;}
     @Override public AiProviderAdapter adapter(AiIntegrationConfig config){
         if(!"mock-xai".equals(config.provider()))throw new IllegalArgumentException("Only simulated provider permitted");
+        return providerAdapter();
+    }
+    public static AiProviderAdapter providerAdapter(){
         return new AiProviderAdapter(){
             public List<String> models(AiIntegrationConfig ignored){return List.of("mock-grok","mock-grok-advanced");}
             public JsonNode generateJson(AiIntegrationConfig selected,String instructions,String input)throws Exception{
+                if(!"mock-xai".equals(selected.provider()))throw new IllegalArgumentException("Only simulated provider permitted");
                 validate(selected);
                 var result=new ObjectMapper().createObjectNode().put("professionalSummary","Synthetic applicant descriptor").put("synthetic",true);
                 result.putArray("skills");result.putArray("employmentHistory");result.putArray("education");

@@ -8,14 +8,19 @@ public final class AiService implements AiExecution {
     private final ConfigurationRepository repository;
     private final ProviderCatalog catalog;
     private final Map<String,AiProviderAdapter> adapters;
+    private final String configName;
     public AiService(ConfigurationRepository repository, SecretStore secrets)throws IOException{
-        this.repository=repository;
-        this.catalog=new ProviderCatalog();
-        this.adapters=Map.of("xai-chat",new XaiAdapter(secrets));
+        this(repository,new ProviderCatalog(),Map.of("xai-chat",new XaiAdapter(secrets)),"ai");
+    }
+    public AiService(ConfigurationRepository repository,ProviderCatalog catalog,Map<String,AiProviderAdapter> adapters,String configName){
+        this.repository=Objects.requireNonNull(repository);
+        this.catalog=Objects.requireNonNull(catalog);
+        this.adapters=Map.copyOf(adapters);
+        this.configName=Objects.requireNonNull(configName);
     }
     public ProviderCatalog catalog(){return catalog;}
-    public AiConfiguration load()throws IOException{return repository.load("ai",AiConfiguration.class).orElseThrow(()->new IOException("AI configuration missing"));}
-    public Optional<AiConfiguration> existing()throws IOException{return repository.load("ai",AiConfiguration.class);}
+    public AiConfiguration load()throws IOException{return repository.load(configName,AiConfiguration.class).orElseThrow(()->new IOException("AI configuration missing"));}
+    public Optional<AiConfiguration> existing()throws IOException{return repository.load(configName,AiConfiguration.class);}
     public AiProviderAdapter adapter(AiIntegrationConfig config){
         var adapter=adapters.get(catalog.definition(config.provider()).path("adapterType").asText());
         if(adapter==null)throw new IllegalArgumentException("Provider adapter unavailable");
@@ -23,7 +28,7 @@ public final class AiService implements AiExecution {
     }
     public void save(AiConfiguration configuration)throws IOException{
         configuration.integrations().values().forEach(catalog::validate);
-        repository.save("ai",configuration);
+        repository.save(configName,configuration);
     }
     public void put(String id,AiIntegrationConfig config,boolean makeDefault,boolean update)throws Exception{
         if(!id.matches("[a-z][a-z0-9-]*"))throw new IllegalArgumentException("Invalid integration ID");
@@ -35,6 +40,7 @@ public final class AiService implements AiExecution {
         save(new AiConfiguration(1,makeDefault?id:previous.map(AiConfiguration::defaultIntegration).orElse(id),integrations,previous.map(AiConfiguration::agentBindings).orElse(Map.of())));
     }
     public void bind(String agent,String integration)throws IOException{
+        if(agent==null||!agent.matches("[a-z][a-z0-9-]*"))throw new IllegalArgumentException("Invalid agent ID");
         var current=load();var bindings=new HashMap<>(current.agentBindings());
         if(integration==null)bindings.remove(agent);else bindings.put(agent,integration);
         save(new AiConfiguration(1,current.defaultIntegration(),current.integrations(),bindings));

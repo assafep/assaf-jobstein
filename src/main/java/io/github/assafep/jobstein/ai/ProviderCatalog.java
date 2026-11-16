@@ -24,6 +24,15 @@ public final class ProviderCatalog {
         }
         providers=Map.copyOf(values);
     }
+    public ProviderCatalog(Map<String,JsonNode> definitions) {
+        var copy=new LinkedHashMap<String,JsonNode>();
+        definitions.forEach((id,definition)->{
+            if(!id.matches("[a-z][a-z0-9-]*")||!id.equals(definition.path("id").asText())||!definition.path("fields").isObject())
+                throw new IllegalArgumentException("Invalid provider definition: "+id);
+            copy.put(id,definition.deepCopy());
+        });
+        providers=Map.copyOf(copy);
+    }
     public Set<String> ids(){return providers.keySet();}
     public JsonNode definition(String id){
         var value=providers.get(id);
