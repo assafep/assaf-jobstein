@@ -22,10 +22,10 @@ Administrative CLI and live Google/xAI adapters are implemented but live end-to-
 
 ## Build
 
-Requires JDK 21 and Gradle 8.10 or later.
+Requires JDK 21. The Gradle wrapper downloads and runs the pinned Gradle version, so a separate Gradle installation is not needed. Run commands from the repository root; the first wrapper run needs network access to download Gradle and dependencies.
 
 ```sh
-gradle test installDist
+./gradlew test installDist
 bash scripts/smoke-test.sh
 ```
 
