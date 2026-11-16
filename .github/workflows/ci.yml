@@ -17,3 +17,5 @@ jobs:
         with:
           gradle-version: '8.10.2'
       - run: gradle --no-daemon test installDist
+
+      - run: bash scripts/smoke-test.sh
