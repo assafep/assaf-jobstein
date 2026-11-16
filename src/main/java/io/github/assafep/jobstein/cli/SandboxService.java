@@ -4,6 +4,7 @@ import io.github.assafep.jobstein.config.ConfigurationRepository;
 import io.github.assafep.jobstein.environment.EnvironmentService;
 import java.io.*;
 import java.util.*;
+import io.github.assafep.jobstein.ai.*;
 
 final class SandboxService {
     public record State(Map<String,String> profiles, Map<String,String> bindings) {
@@ -20,12 +21,45 @@ final class SandboxService {
         return repository.load("state",State.class).orElseThrow(()->new IOException("Run onboard --env sandbox first"));
     }
     private void save(State state)throws IOException{repository.save("state",state);}
+    private AiConfiguration aiConfig() throws IOException {
+        return repository.load("mock-ai", AiConfiguration.class).orElseGet(() ->
+            new AiConfiguration(1,"standard",Map.of("standard", mock("mock-grok")),Map.of()));
+    }
+    private static AiIntegrationConfig mock(String model) {
+        if(!Set.of("mock-grok","mock-grok-advanced").contains(model))
+            throw new IllegalArgumentException("Unknown synthetic model");
+        return new AiIntegrationConfig("mock-xai",Map.of("model",model));
+    }
+    private void saveAi(AiConfiguration config)throws IOException {repository.save("mock-ai",config);}
+    private static AiIntegrationConfig selected(AiConfiguration config,String integration){
+        var result=config.integrations().get(integration==null?config.defaultIntegration():integration);
+        if(result==null)throw new IllegalArgumentException("Unknown integration");
+        return result;
+    }
+    private void changeAi(String op,String integration,Map<String,String> fields,boolean makeDefault)throws IOException {
+        var config=aiConfig();
+        String id=integration==null&&op.equals("ai configure")?config.defaultIntegration():require(integration,"--integration");
+        if(!id.matches("[a-z][a-z0-9-]*"))throw new IllegalArgumentException("Invalid integration ID");
+        var values=new TreeMap<>(config.integrations());
+        if(op.equals("ai integration remove")){
+            if(values.remove(id)==null)throw new IllegalArgumentException("Unknown integration");
+        }else{
+            boolean exists=values.containsKey(id);
+            if(op.equals("ai integration create")&&exists)throw new IllegalArgumentException("Integration already exists");
+            if(op.equals("ai integration update")&&!exists)throw new IllegalArgumentException("Unknown integration");
+            if(!fields.keySet().stream().allMatch("model"::equals))throw new IllegalArgumentException("Sandbox accepts only a synthetic model field");
+            String model=fields.getOrDefault("model",exists?values.get(id).configuration().get("model"):"mock-grok");
+            values.put(id,mock(model));
+        }
+        saveAi(new AiConfiguration(1,makeDefault&&!op.endsWith("remove")?id:config.defaultIntegration(),values,config.agentBindings()));
+    }
+
     private static String require(String value,String label){
         if(value==null||value.isBlank())throw new IllegalArgumentException(label+" is required");
         return value;
     }
     private static String slug(String role){return io.github.assafep.jobstein.storage.UserProfileService.slug(role);}
-    int execute(String op,String role,String profile,String agent,String integration)throws IOException{
+    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault)throws IOException{
         out.println("SANDBOX — simulated data; no external API calls");
         if(op.equals("onboard")){
             environments.create("sandbox");
@@ -36,6 +70,7 @@ final class SandboxService {
         var state=load();
         var profiles=new TreeMap<>(state.profiles());
         var bindings=new TreeMap<>(state.bindings());
+        var ai=aiConfig();
         switch(op){
             case "doctor" -> {
                 environments.validate("sandbox");
@@ -46,15 +81,18 @@ final class SandboxService {
             }
             case "google status","google validate","google configure","google authorize" -> out.println("Simulated Google project: jobstein-sandbox");
             case "ai provider list" -> out.println("mock-xai");
-            case "ai provider models" -> out.println("mock-grok");
-            case "ai integration list","ai integration show","ai integration validate","ai validate" -> out.println("standard mock-xai mock-grok");
-            case "ai agent list" -> {out.println("Default: standard");bindings.forEach((a,i)->out.println(a+" -> "+i));}
-            case "ai agent show" -> out.println(bindings.getOrDefault(require(agent,"--agent"),"standard"));
+            case "ai provider models" -> {out.println("mock-grok");out.println("mock-grok-advanced");}
+            case "ai integration list" -> new TreeMap<>(ai.integrations()).forEach((id,value)->out.println(id+" "+value.provider()+" "+value.configuration().get("model")));
+            case "ai integration show","ai integration validate" -> out.println(selected(ai,integration));
+            case "ai validate" -> out.println("Simulated configuration valid");
+            case "ai configure","ai integration create","ai integration update","ai integration remove" -> changeAi(op,integration,fields,makeDefault);
+            case "ai agent list" -> {out.println("Default: "+ai.defaultIntegration());new TreeMap<>(ai.agentBindings()).forEach((a,i)->out.println(a+" -> "+i));}
+            case "ai agent show" -> out.println(new AiIntegrationResolver(ai).resolve(require(agent,"--agent")).id());
             case "ai agent configure" -> {
-                if(!"standard".equals(integration))throw new IllegalArgumentException("Sandbox supports only standard integration");
-                bindings.put(require(agent,"--agent"),integration);save(new State(profiles,bindings));
+                var updated=new TreeMap<>(ai.agentBindings());updated.put(require(agent,"--agent"),require(integration,"--integration"));
+                saveAi(new AiConfiguration(1,ai.defaultIntegration(),ai.integrations(),updated));
             }
-            case "ai agent reset" -> {bindings.remove(require(agent,"--agent"));save(new State(profiles,bindings));}
+            case "ai agent reset" -> {var updated=new TreeMap<>(ai.agentBindings());updated.remove(require(agent,"--agent"));saveAi(new AiConfiguration(1,ai.defaultIntegration(),ai.integrations(),updated));}
             case "user show","user initialize","user validate" -> out.println("Example Applicant (synthetic)");
             case "profile list" -> profiles.forEach((k,v)->out.println(k+" "+v));
             case "profile create" -> {

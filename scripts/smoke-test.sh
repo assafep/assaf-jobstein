@@ -16,3 +16,13 @@ cli=./build/install/jobstein/bin/jobstein
 "$cli" profile descriptor show --env sandbox --profile product.manager
 "$cli" profile deactivate --env sandbox --profile product.manager
 "$cli" profile list --env sandbox | grep 'product.manager INACTIVE'
+"$cli" ai integration create --env sandbox --integration advanced --field model=mock-grok-advanced
+"$cli" ai agent configure --env sandbox --agent applicant-profile-generator --integration advanced
+"$cli" ai agent show --env sandbox --agent applicant-profile-generator | grep advanced
+if "$cli" ai integration remove --env sandbox --integration advanced; then
+  echo 'Expected referenced integration removal to fail' >&2
+  exit 1
+fi
+"$cli" ai agent reset --env sandbox --agent applicant-profile-generator
+"$cli" ai agent show --env sandbox --agent applicant-profile-generator | grep standard
+"$cli" ai integration remove --env sandbox --integration advanced

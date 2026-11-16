@@ -1,6 +1,6 @@
 # Online sandbox
 
-Use GitHub Codespaces with the repository dev container. It installs JDK 21 and Gradle and builds the CLI. No Google or xAI credentials are needed for simulated testing.
+Use GitHub Codespaces with the repository dev container. It installs JDK 21 and builds the CLI with the pinned Gradle wrapper. No Google or xAI credentials are needed for simulated testing.
 
 ```bash
 bash scripts/setup-sandbox.sh
@@ -13,6 +13,16 @@ jobstein profile descriptor show --env sandbox --profile product.manager
 bash scripts/smoke-test.sh
 ```
 
-The reserved sandbox environment routes administrative commands to a local simulated service before constructing live adapters. State lives under ~/.config/jobstein/environments/sandbox/simulation. The fixture uses a synthetic applicant, mock model and generated descriptor. No real PDF, OAuth, email, calendar or Drive requests occur. This is a CLI demonstration, not an integration test of real external adapters. Integration mutation and resume upload/regeneration are not supported in this first simulation.
+The reserved sandbox environment routes administrative commands to a local simulated service before constructing live adapters. State lives under ~/.config/jobstein/environments/sandbox/simulation. The fixture uses a synthetic applicant, mock model and generated descriptor. No real PDF, OAuth, email, calendar or Drive requests occur. This is a CLI demonstration, not an integration test of real external adapters. Named synthetic AI integrations and per-agent overrides use the same configuration and resolver contracts as live mode. Resume upload/regeneration remain unsupported.
 
 For live testing use a separate development environment. Google desktop OAuth requires a browser that can reach its loopback callback; remote Codespaces OAuth is not configured here. The dev container does not install gcloud. Use a local machine with gcloud for current live onboarding.
+
+## AI integration experimentation
+
+```bash
+jobstein ai integration create --env sandbox --integration advanced --field model=mock-grok-advanced
+jobstein ai agent configure --env sandbox --agent applicant-profile-generator --integration advanced
+jobstein ai agent show --env sandbox --agent applicant-profile-generator
+jobstein ai agent reset --env sandbox --agent applicant-profile-generator
+jobstein ai integration remove --env sandbox --integration advanced
+```
