@@ -39,6 +39,47 @@ public final class ProfileIndexRecovery {
         return new Status(snapshot.local().equals(snapshot.remote()),snapshot.localPresent(),local.size(),remote.size(),changed,repository.load(ProfileIndexSync.JOURNAL,ProfileIndexSync.Intent.class).isPresent());
     }
     public Status status()throws Exception{return summarize(capture());}
+    public enum Position { BEFORE, AFTER, UNEXPECTED, NOT_APPLICABLE }
+    public enum RecoveryState { CLEAN, DIVERGED, RECOVERABLE, CONFLICT }
+    public record Inspection(RecoveryState state,Position local,Position remote){}
+    private static Position position(JsonNode actual,ProfileIndexSync.Intent intent){
+        if(actual.equals(intent.after()))return Position.AFTER;
+        if(actual.equals(intent.before()))return Position.BEFORE;
+        return Position.UNEXPECTED;
+    }
+    private Inspection inspect(Snapshot snapshot)throws Exception{
+        var pending=repository.load(ProfileIndexSync.JOURNAL,ProfileIndexSync.Intent.class);
+        if(pending.isEmpty())return new Inspection(snapshot.local().equals(snapshot.remote())?RecoveryState.CLEAN:RecoveryState.DIVERGED,Position.NOT_APPLICABLE,Position.NOT_APPLICABLE);
+        var intent=pending.get();
+        var local=position(snapshot.local(),intent);
+        var remote=position(snapshot.remote(),intent);
+        if(!snapshot.indexId().equals(intent.indexId())||local==Position.UNEXPECTED||remote==Position.UNEXPECTED)
+            return new Inspection(RecoveryState.CONFLICT,local,remote);
+        try{validateCandidate(intent.before());validateCandidate(intent.after());}
+        catch(Exception invalid){
+            if(invalid instanceof InterruptedException){Thread.currentThread().interrupt();throw invalid;}
+            return new Inspection(RecoveryState.CONFLICT,local,remote);
+        }
+        return new Inspection(RecoveryState.RECOVERABLE,local,remote);
+    }
+    public Inspection inspect()throws Exception{return inspect(capture());}
+    public record ResumeResult(Inspection before,Optional<String> backup,boolean applied){}
+    private record RecoveryBackup(Snapshot snapshot,ProfileIndexSync.Intent intent){}
+    public ResumeResult resume(boolean apply)throws Exception{
+        var snapshot=capture();
+        var before=inspect(snapshot);
+        if(!apply||before.state()==RecoveryState.CLEAN)return new ResumeResult(before,Optional.empty(),false);
+        if(before.state()!=RecoveryState.RECOVERABLE)throw new DiagnosticException(DiagnosticException.Code.PROFILE_INDEX_DIVERGED);
+        var intent=repository.load(ProfileIndexSync.JOURNAL,ProfileIndexSync.Intent.class).orElseThrow();
+        String backup="recovery-backup-"+UUID.randomUUID();
+        repository.save(backup,new RecoveryBackup(snapshot,intent));
+        var latest=capture();
+        if(!snapshot.indexId().equals(latest.indexId())||!snapshot.local().equals(latest.local())||!snapshot.remote().equals(latest.remote())||
+            snapshot.localPresent()!=latest.localPresent()||!repository.load(ProfileIndexSync.JOURNAL,ProfileIndexSync.Intent.class).equals(Optional.of(intent)))
+            throw new DiagnosticException(DiagnosticException.Code.PROFILE_INDEX_DIVERGED);
+        new ProfileIndexSync(repository,storage,snapshot.indexId()).recoverAndValidate();
+        return new ResumeResult(before,Optional.of(backup),true);
+    }
     private String preserve(Snapshot snapshot)throws IOException{
         String name="index-backup-"+UUID.randomUUID();
         repository.save(name,snapshot);return name;

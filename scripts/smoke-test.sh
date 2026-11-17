@@ -50,3 +50,7 @@ fi
 "$cli" profile activate --env sandbox --profile product.manager --approve-descriptor
 "$cli" profile list --env sandbox | grep 'product.manager ACTIVE'
 "$cli" profile resume history --env sandbox --profile product.manager | grep 'synthetic resume 2'
+
+"$cli" state recovery inspect --env sandbox | grep CLEAN
+"$cli" state recovery resume --env sandbox | grep "Dry run"
+"$cli" state recovery resume --env sandbox --apply | grep "No pending update"
