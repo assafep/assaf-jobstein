@@ -14,9 +14,17 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
     public WorkspaceClient(GoogleOAuth oauth) { this.oauth=oauth; }
     private JsonNode request(String method,String url,byte[] body,String type) throws IOException,InterruptedException {
-        var builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+oauth.accessToken());
+        return request(method,url,body,type,true);
+    }
+    private JsonNode request(String method,String url,byte[] body,String type,boolean retryRead)throws IOException,InterruptedException{
+        String token=oauth.accessToken();
+        var builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+token);
         if(body!=null) builder.header("Content-Type",type);
         var response=http.send(builder.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofByteArray(body)).build(),HttpResponse.BodyHandlers.ofString());
+        if(response.statusCode()==401){
+            oauth.invalidateAccessToken(token);
+            if(retryRead&&method.equals("GET"))return request(method,url,body,type,false);
+        }
         if(response.statusCode()<200 || response.statusCode()>=300) throw new WorkspaceHttpException(response.statusCode());
         return response.body().isBlank()?JSON.createObjectNode():JSON.readTree(response.body());
     }
@@ -101,10 +109,18 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         request("PATCH","https://www.googleapis.com/upload/drive/v3/files/"+id(fileId)+"?uploadType=media",JSON.writeValueAsBytes(data),"application/json");
     }
     public byte[] readBytes(String fileId,int limit)throws Exception{
-        if(limit<1)throw new IllegalArgumentException("Invalid download limit");
+        return readBytes(fileId,limit,true);
+    }
+    private byte[] readBytes(String fileId,int limit,boolean retry)throws Exception{
+        if(limit<1||limit==Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid download limit");
+        String token=oauth.accessToken();
         var request=HttpRequest.newBuilder(URI.create("https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?alt=media"))
-            .timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+oauth.accessToken()).GET().build();
+            .timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+token).GET().build();
         var response=http.send(request,HttpResponse.BodyHandlers.ofInputStream());
+        if(response.statusCode()==401){
+            oauth.invalidateAccessToken(token);
+            if(retry){response.body().close();return readBytes(fileId,limit,false);}
+        }
         try(var input=response.body()){
             if(response.statusCode()<200||response.statusCode()>=300)throw new WorkspaceHttpException(response.statusCode());
             byte[] bytes=input.readNBytes(limit+1);

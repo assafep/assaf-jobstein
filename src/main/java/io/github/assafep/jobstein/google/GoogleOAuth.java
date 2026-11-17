@@ -22,8 +22,9 @@ public final class GoogleOAuth {
     private static final ObjectMapper JSON = new ObjectMapper();
     private final SecretStore secrets;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
+    private final AccessTokenCache tokens=new AccessTokenCache(java.time.Clock.systemUTC(),Duration.ofSeconds(60));
     public GoogleOAuth(SecretStore secrets) { this.secrets = secrets; }
-    public void importClient(Path path, String expectedProject) throws IOException {
+    public synchronized void importClient(Path path, String expectedProject) throws IOException {
         JsonNode client = JSON.readTree(path.toFile()).path("installed");
         if (!client.path("client_id").isTextual() || !client.path("client_secret").isTextual()
             || !expectedProject.equals(client.path("project_id").asText()))
@@ -34,6 +35,7 @@ public final class GoogleOAuth {
                 throw new IOException("Cannot replace OAuth client while a refresh token exists");
         }
         secrets.put(CLIENT, JSON.writeValueAsBytes(client));
+        tokens.clear();
     }
     private JsonNode client() throws IOException {
         return JSON.readTree(secrets.get(CLIENT).orElseThrow(() -> new IOException("Import desktop OAuth client first")));
@@ -58,7 +60,7 @@ public final class GoogleOAuth {
         return value;
     }
     public void authorize(Consumer<String> display) throws Exception {authorize(display,Optional.empty());}
-    public void authorize(Consumer<String> display,Optional<String> expectedSubject) throws Exception {
+    public synchronized void authorize(Consumer<String> display,Optional<String> expectedSubject) throws Exception {
         var client=client(); String verifier=random(), state=random();
         String challenge=Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(StandardCharsets.US_ASCII)));
         HttpServer server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
@@ -99,6 +101,7 @@ public final class GoogleOAuth {
             var identity=identity(required(token,"access_token"));
             GoogleAccountBinding.verify(expectedSubject,identity.path("sub").asText(""));
             secrets.put(REFRESH,required(token,"refresh_token").getBytes(StandardCharsets.UTF_8));
+            tokens.clear();
         } finally { server.stop(0); }
     }
     private JsonNode identity(String accessToken)throws IOException,InterruptedException{
@@ -107,10 +110,17 @@ public final class GoogleOAuth {
         if(response.statusCode()!=200)throw new IOException("Google identity verification failed");
         return JSON.readTree(response.body());
     }
-    public String accessToken() throws IOException, InterruptedException {
+    public synchronized String accessToken() throws IOException, InterruptedException {
+        return tokens.get(this::refreshAccessToken);
+    }
+    public synchronized void invalidateAccessToken(String rejected){tokens.invalidate(rejected);}
+    private AccessTokenCache.Grant refreshAccessToken() throws IOException, InterruptedException {
         var client=client();
         String refresh=new String(secrets.get(REFRESH).orElseThrow(()->new IOException("Run google authorize first")),StandardCharsets.UTF_8);
-        return required(exchange(Map.of("client_id",required(client,"client_id"),"client_secret",required(client,"client_secret"),
-            "refresh_token",refresh,"grant_type","refresh_token")),"access_token");
+        var response=exchange(Map.of("client_id",required(client,"client_id"),"client_secret",required(client,"client_secret"),
+            "refresh_token",refresh,"grant_type","refresh_token"));
+        long seconds=response.path("expires_in").asLong(-1);
+        if(seconds<=0||seconds>86400)throw new IOException("Invalid OAuth token lifetime");
+        return new AccessTokenCache.Grant(required(response,"access_token"),Duration.ofSeconds(seconds));
     }
 }

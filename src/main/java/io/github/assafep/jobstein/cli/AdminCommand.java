@@ -63,7 +63,8 @@ final class AdminCommand implements Callable<Integer> {
         return "y".equalsIgnoreCase(System.console().readLine("%s [y/N]: ",label));
     }
     AdminCommand(String operation){this.operation=operation;}
-    private GoogleOAuth oauth(){return new GoogleOAuth(secrets);}
+    private GoogleOAuth googleOAuth;
+    private GoogleOAuth oauth(){return googleOAuth;}
     private AiService ai()throws Exception{return new AiService(config,secrets);}
     private UserProfileService users()throws Exception{return new UserProfileService(config,new WorkspaceClient(oauth()),ai(),env);}
     private GoogleSettings google()throws IOException{return config.load("google",GoogleSettings.class).orElseThrow(()->new IOException("Google not configured"));}
@@ -185,6 +186,7 @@ final class AdminCommand implements Callable<Integer> {
             if(!operation.equals("onboard"))environments.validate(env);
             config=new ConfigurationRepository(directory);
             secrets=CredentialStores.open(directory,config,Optional.ofNullable(credentialStore));
+            googleOAuth=new GoogleOAuth(secrets);
             if(operation.startsWith("state "))return StateCommands.execute(operation,users().recovery(),reconciliationSource,applyReconciliation,out());
             switch(operation){
                 case "onboard":return onboard();
