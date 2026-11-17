@@ -15,6 +15,8 @@ public final class ProfileOnboarding {
     public UserProfileService.ProfileState run(String role,Optional<Path> supplied,ResumeSource resumeSource,Consent consent,Review review)throws Exception{
         var state=service.create(role);
         String slug=state.profile().slug();
+        // Finish an interrupted descriptor operation before selecting a new resume or reviewing.
+        state=service.resumePendingDescriptor(slug).orElse(state);
         // Only explicitly supplied files may replace a previously uploaded resume.
         if(supplied.isPresent())state=service.upload(slug,supplied.get());
         else if(state.resumes().isEmpty())state=service.upload(slug,resumeSource.get());

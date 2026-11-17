@@ -18,6 +18,7 @@ class FolderDescriptorRecoveryTest {
         final LocalWorkspaceStorage delegate;
         boolean folderFailure;
         boolean descriptorFailure;
+        boolean indexFailure;
         FaultStorage(LocalWorkspaceStorage delegate){this.delegate=delegate;}
         public JsonNode userInfo(){return delegate.userInfo();}
         public JsonNode file(String id)throws Exception{return delegate.file(id);}
@@ -36,7 +37,10 @@ class FolderDescriptorRecoveryTest {
             if(descriptorFailure&&n.startsWith("applicant-descriptor-")){descriptorFailure=false;throw new IOException("Lost descriptor response");}
             return actual;
         }
-        public void updateJson(String id,JsonNode data)throws Exception{delegate.updateJson(id,data);}
+        public void updateJson(String id,JsonNode data)throws Exception{
+            delegate.updateJson(id,data);
+            if(indexFailure){indexFailure=false;throw new IOException("Lost index update response");}
+        }
         public byte[] readBytes(String id,int limit)throws Exception{return delegate.readBytes(id,limit);}
         public JsonNode readJson(String id)throws Exception{return delegate.readJson(id);}
     }
@@ -69,5 +73,16 @@ class FolderDescriptorRecoveryTest {
         assertTrue(config.load(journal,UserProfileService.DescriptorIntent.class).isEmpty());
         assertEquals(intent.payload(),recovered.descriptor(profile.slug()));
         assertNotEquals(expected,service.generate(profile.slug(),pdf).descriptorId());
+        storage.indexFailure=true;
+        assertThrows(IOException.class,()->service.generate(profile.slug(),pdf));
+        var committed=config.load(journal,UserProfileService.DescriptorIntent.class).orElseThrow();
+        String committedId=intents.load().resourceIds().get("descriptor/"+committed.operationId());
+        var workflow=new ProfileOnboarding(recovered);
+        var ready=workflow.run("Software Engineer",Optional.empty(),()->{throw new AssertionError("Resume already stored");},()->{throw new AssertionError("AI result already stored");},d->true);
+        assertEquals(committedId,ready.descriptorId());
+        assertEquals(io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE,ready.profile().status());
+        assertTrue(config.load(journal,UserProfileService.DescriptorIntent.class).isEmpty());
+        var replacement=SyntheticResume.create(root.resolve("fixtures"),profile.slug(),2);
+        assertEquals(2,recovered.upload(profile.slug(),replacement).resumes().size());
     }
 }

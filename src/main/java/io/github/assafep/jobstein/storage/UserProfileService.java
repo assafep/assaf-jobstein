@@ -124,7 +124,7 @@ public final class UserProfileService {
         var state=get(slug);var document=ResumeDocument.read(path);byte[] bytes=document.bytes();
         String hash=document.sha256();
         if(!state.resumes().isEmpty()&&state.resumes().getLast().hash().equals(hash)){saveProfiles(profiles());return state;}
-        if(repository.load("descriptor-"+state.profile().id(),DescriptorIntent.class).isPresent())throw new IOException("Finish pending descriptor generation before updating resume");
+        if(hasUnfinishedDescriptor(state))throw new IOException("Finish pending descriptor generation before updating resume");
         String id=retryableUpload("resume/"+state.profile().id()+"/"+hash,resource("profile/"+slug+"/resume"),hash+".pdf","application/pdf",bytes);
         var versions=new ArrayList<>(state.resumes());versions.add(new ResumeVersion(id,hash,path.getFileName().toString()));
         var updated=new ProfileState(withStatus(state.profile(),ApplicantProfile.Status.RESUME_UPLOADED),versions,null);
@@ -132,6 +132,26 @@ public final class UserProfileService {
     }
     private static ApplicantProfile withStatus(ApplicantProfile p,ApplicantProfile.Status status){return new ApplicantProfile(p.id(),p.userId(),p.targetRole(),p.slug(),status);}
     public record DescriptorIntent(String operationId,JsonNode payload){}
+    private boolean hasUnfinishedDescriptor(ProfileState state)throws Exception{
+        String journal="descriptor-"+state.profile().id();
+        var pendingIntent=repository.load(journal,DescriptorIntent.class);
+        if(pendingIntent.isEmpty())return false;
+        var intent=pendingIntent.get();
+        String allocated=pending.load().resourceIds().get("descriptor/"+intent.operationId());
+        if(allocated==null||!allocated.equals(state.descriptorId()))return true;
+        // The index commit may have succeeded just before the process stopped.
+        // Never clear the intent unless the indexed resource matches and validates.
+        if(!intent.payload().equals(descriptor(state.profile().slug())))throw new DiagnosticException(DiagnosticException.Code.DESCRIPTOR_INVALID);
+        repository.remove(journal);
+        return false;
+    }
+    public Optional<ProfileState> resumePendingDescriptor(String slug)throws Exception{
+        prepareProfileMutation();
+        var state=get(slug);
+        if(!hasUnfinishedDescriptor(state))return Optional.empty();
+        // A persisted intent already contains the AI result. No new AI call is needed.
+        return Optional.of(generateStored(slug));
+    }
     public ProfileState generate(String slug,Path localResume)throws Exception{
         prepareProfileMutation();
         return generateDocument(slug,ResumeDocument.read(localResume));
@@ -150,6 +170,7 @@ public final class UserProfileService {
         if(!hash.equals(state.resumes().getLast().hash()))throw new DiagnosticException(DiagnosticException.Code.RESUME_MISMATCH);
         String journal="descriptor-"+state.profile().id();
         var previous=repository.load(journal,DescriptorIntent.class);
+        if(previous.isPresent()&&!hasUnfinishedDescriptor(state))return state;
         DescriptorIntent intent;
         if(previous.isPresent()){
             intent=previous.get();
@@ -187,7 +208,7 @@ public final class UserProfileService {
     }
     public void activate(String slug,boolean active)throws Exception{
         prepareProfileMutation();
-        var state=get(slug);if(active)descriptor(slug);
+        var state=get(slug);if(active){if(hasUnfinishedDescriptor(state))throw new IOException("Finish pending descriptor generation before activation");descriptor(slug);}
         saveProfile(new ProfileState(withStatus(state.profile(),active?ApplicantProfile.Status.ACTIVE:ApplicantProfile.Status.INACTIVE),state.resumes(),state.descriptorId()));
     }
     public ApplicationRegistry applicationRegistry() {
