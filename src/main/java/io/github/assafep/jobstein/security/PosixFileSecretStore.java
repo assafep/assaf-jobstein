@@ -42,7 +42,7 @@ public final class PosixFileSecretStore implements SecretStore {
 
     private Optional<Path> resolve(String reference, boolean create) throws IOException {
         String[] parts = segments(reference);
-        if (create) Files.createDirectories(root.getParent());
+        if (!validateAncestors(create)) return Optional.empty();
         if (!create && Files.notExists(root, LinkOption.NOFOLLOW_LINKS)) return Optional.empty();
         ensureDirectory(root, create);
         Path directory = root;
@@ -70,6 +70,26 @@ public final class PosixFileSecretStore implements SecretStore {
             }
         }
         return Optional.of(file);
+    }
+
+    private boolean validateAncestors(boolean create) throws IOException {
+        Path parent = root.getParent();
+        if (parent == null) throw new IOException("Secret root must have a parent directory");
+        Path current = parent.getRoot();
+        for (Path component : parent) {
+            current = current.resolve(component);
+            if (create && Files.notExists(current, LinkOption.NOFOLLOW_LINKS)) {
+                try {
+                    Files.createDirectory(current, PosixFilePermissions.asFileAttribute(
+                        PosixFilePermissions.fromString("rwx------")));
+                } catch (FileAlreadyExistsException ignored) {}
+            }
+            if (Files.notExists(current, LinkOption.NOFOLLOW_LINKS)) return false;
+            if (!Files.isDirectory(current, LinkOption.NOFOLLOW_LINKS)) {
+                throw new IOException("Secret path ancestors must be real directories");
+            }
+        }
+        return true;
     }
 
     @Override public void put(String reference, byte[] value) throws IOException {
