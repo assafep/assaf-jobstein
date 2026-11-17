@@ -46,7 +46,7 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         catch(WorkspaceHttpException e){
             if(e.status!=409)throw e;
             var existing=file(allocatedId);
-            if(existing.path("trashed").asBoolean()||!name.equals(existing.path("name").asText())||
+            if(!allocatedId.equals(existing.path("id").asText())||!existing.path("trashed").isBoolean()||existing.path("trashed").asBoolean()||!name.equals(existing.path("name").asText())||
                 !mime.equals(existing.path("mimeType").asText())||!existing.path("capabilities").path("canEdit").asBoolean()||
                 !java.util.stream.StreamSupport.stream(existing.path("parents").spliterator(),false).anyMatch(v->parent.equals(v.asText())))throw new IOException("Allocated Drive ID conflicts with unexpected resource");
             if(!io.github.assafep.jobstein.storage.ResumeDocument.sha256(data).equalsIgnoreCase(existing.path("sha256Checksum").asText()))
@@ -67,19 +67,26 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         String query="trashed = false and mimeType = 'application/vnd.google-apps.folder' and '"+(parent==null?"root":id(parent))+"' in parents and appProperties has { key='jobsteinId' and value='"+escaped+"' }";
         var found=request("GET","https://www.googleapis.com/drive/v3/files?q="+q(query)+"&fields=nextPageToken,files(id)&pageSize=100",null,null);
         var list=found.path("files");
-        if(list.size()>1 || found.has("nextPageToken")) throw new IOException("Ambiguous Jobstein folder: "+name);
+        if(!list.isArray()||list.size()>1 || found.has("nextPageToken")) throw new IOException("Ambiguous Jobstein folder: "+name);
         return list.size()==1?Optional.of(id(list.get(0).path("id").asText())):Optional.empty();
     }
     public String ensureFolder(String parent,String name,String marker)throws Exception{
         var existing=findFolder(parent,name,marker);
-        return existing.isPresent()?existing.get():ensureFolderWithId(parent,name,marker,allocateFileId());
+        if(existing.isPresent()){validateFolder(existing.get(),parent,name,marker);return existing.get();}
+        String allocated=allocateFileId();
+        String created=ensureFolderWithId(parent,name,marker,allocated);
+        validateFolder(created,parent,name,marker);return created;
     }
     public String ensureFolderWithId(String parent,String name,String marker,String allocatedId)throws Exception{
         ObjectNode metadata=JSON.createObjectNode().put("name",name).put("mimeType","application/vnd.google-apps.folder");
-        metadata.putArray("parents").add(parent==null?"root":parent);
+        metadata.putArray("parents").add(parent==null?"root":id(parent));
         metadata.putObject("appProperties").put("jobsteinId",marker);
         metadata.put("id",id(allocatedId));
-        try{return request("POST","https://www.googleapis.com/drive/v3/files?fields=id",JSON.writeValueAsBytes(metadata),"application/json").path("id").asText();}
+        try{
+            String actual=request("POST","https://www.googleapis.com/drive/v3/files?fields=id",JSON.writeValueAsBytes(metadata),"application/json").path("id").asText();
+            if(!allocatedId.equals(actual))throw new IOException("Unexpected allocated folder ID");
+            return actual;
+        }
         catch(WorkspaceHttpException e){
             if(e.status!=409)throw e;
             validateFolder(allocatedId,parent,name,marker);
@@ -88,8 +95,8 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     }
     public void validateFolder(String folderId,String parent,String name,String marker)throws Exception{
         var actual=file(folderId);
-        String expectedParent=parent==null?file("root").path("id").asText():parent;
-        if(actual.path("trashed").asBoolean()||!actual.path("capabilities").path("canEdit").asBoolean()||
+        String expectedParent=parent==null?id(file("root").path("id").asText()):id(parent);
+        if(!folderId.equals(actual.path("id").asText())||!actual.path("trashed").isBoolean()||actual.path("trashed").asBoolean()||!actual.path("capabilities").path("canEdit").asBoolean()||
             !"application/vnd.google-apps.folder".equals(actual.path("mimeType").asText())||
             !name.equals(actual.path("name").asText())||!marker.equals(actual.path("appProperties").path("jobsteinId").asText())||
             !java.util.stream.StreamSupport.stream(actual.path("parents").spliterator(),false).anyMatch(v->expectedParent.equals(v.asText())))
