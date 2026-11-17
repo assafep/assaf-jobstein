@@ -34,3 +34,7 @@ bash scripts/smoke-test.sh
 ```
 
 See [architecture](docs/architecture.md). Never commit credentials, resumes or personal application data.
+
+## Continue development with Codex
+
+Start Codex from the root of a dedicated clone and say `keep going`. [AGENTS.md](AGENTS.md) defines the CI-gated development workflow and [the handover](docs/handover/README.md) contains requirements, implementation status, prioritized backlog and the local DevLoop migration plan. No prior ChatGPT transcript is required. Coordinate with any active remote development automation before enabling unattended local publication.
