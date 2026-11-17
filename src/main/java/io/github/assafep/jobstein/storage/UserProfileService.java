@@ -34,10 +34,9 @@ public final class UserProfileService {
     }
     public JobsteinUser user()throws IOException{return repository.load("user",JobsteinUser.class).orElseThrow(()->new IOException("Initialize user first"));}
     public Profiles profiles()throws IOException{return repository.load("profiles",Profiles.class).orElse(new Profiles(Map.of()));}
-    private void saveProfiles(Profiles profiles)throws Exception{
-        repository.save("profiles",profiles);
-        drive.updateJson(resource("user/profiles-index"),JSON.valueToTree(profiles));
-    }
+    private ProfileIndexSync indexSync()throws IOException{return new ProfileIndexSync(repository,drive,resource("user/profiles-index"));}
+    private void saveProfiles(Profiles profiles)throws Exception{indexSync().update(profiles);}
+    private void prepareProfileMutation()throws Exception{verifyAccount();indexSync().recoverAndValidate();}
     private void saveProfile(ProfileState profile)throws Exception{
         var all=new HashMap<>(profiles().entries());all.put(profile.profile().slug(),profile);saveProfiles(new Profiles(all));
     }
@@ -94,7 +93,7 @@ public final class UserProfileService {
         seed("user/metadata",home,"user.json",JSON.valueToTree(user));
         seed("user/registry",shared,"application-registry.json",registrySeed());
         seed("user/profiles-index",shared,"profiles-index.json",JSON.valueToTree(profiles()));
-        saveProfiles(profiles());
+        indexSync().recoverAndValidate();
         for(String state:List.of("gmail-state","calendar-state","user-preferences","automation-policy"))
             seed("user/"+state,shared,state+".json",JSON.createObjectNode().put("schemaVersion",1));
         return user;
@@ -106,7 +105,7 @@ public final class UserProfileService {
         io.github.assafep.jobstein.google.GoogleAccountBinding.verify(Optional.of(user().googleAccountSubject()),drive.userInfo().path("sub").asText(""));
     }
     public ProfileState create(String role)throws Exception{
-        verifyAccount();
+        prepareProfileMutation();
         var owner=user();String slug=slug(role);if(slug.equals("shared"))throw new IllegalArgumentException("Reserved profile slug");
         var existing=profiles().entries().get(slug);
         var state=existing==null?new ProfileState(new ApplicantProfile(UUID.randomUUID(),owner.id(),role,slug,ApplicantProfile.Status.INITIALIZING),List.of(),null):existing;
@@ -121,7 +120,7 @@ public final class UserProfileService {
         saveProfile(state);return state;
     }
     public ProfileState upload(String slug,Path path)throws Exception{
-        verifyAccount();
+        prepareProfileMutation();
         var state=get(slug);var document=ResumeDocument.read(path);byte[] bytes=document.bytes();
         String hash=document.sha256();
         if(!state.resumes().isEmpty()&&state.resumes().getLast().hash().equals(hash)){saveProfiles(profiles());return state;}
@@ -134,7 +133,7 @@ public final class UserProfileService {
     private static ApplicantProfile withStatus(ApplicantProfile p,ApplicantProfile.Status status){return new ApplicantProfile(p.id(),p.userId(),p.targetRole(),p.slug(),status);}
     public record DescriptorIntent(String operationId,JsonNode payload){}
     public ProfileState generate(String slug,Path localResume)throws Exception{
-        verifyAccount();
+        prepareProfileMutation();
         var state=get(slug);
         if(state.resumes().isEmpty())throw new IOException("Upload a resume first");
         var document=ResumeDocument.read(localResume);
@@ -178,7 +177,7 @@ public final class UserProfileService {
         return data;
     }
     public void activate(String slug,boolean active)throws Exception{
-        verifyAccount();
+        prepareProfileMutation();
         var state=get(slug);if(active)descriptor(slug);
         saveProfile(new ProfileState(withStatus(state.profile(),active?ApplicantProfile.Status.ACTIVE:ApplicantProfile.Status.INACTIVE),state.resumes(),state.descriptorId()));
     }
@@ -197,7 +196,6 @@ public final class UserProfileService {
     public void validateUser()throws Exception{
         verifyAccount();
         drive.readJson(resource("user/registry"));
-        var remote=drive.readJson(resource("user/profiles-index"));
-        if(!JSON.valueToTree(profiles()).equals(remote))throw new DiagnosticException(DiagnosticException.Code.PROFILE_INDEX_DIVERGED);
+        indexSync().validate();
     }
 }

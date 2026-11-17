@@ -13,7 +13,7 @@ public final class ProfileIndexRecovery {
     @FunctionalInterface public interface Owner {JobsteinUser get()throws IOException;}
     public enum Source { LOCAL, REMOTE }
     public record Snapshot(String indexId,String capturedAt,JsonNode local,JsonNode remote,boolean localPresent){}
-    public record Status(boolean consistent,boolean localPresent,int localCount,int remoteCount,int changedEntries){}
+    public record Status(boolean consistent,boolean localPresent,int localCount,int remoteCount,int changedEntries,boolean pendingUpdate){}
     private static final ObjectMapper JSON=new ObjectMapper();
     private final ConfigurationRepository repository;
     private final WorkspaceStorage storage;
@@ -36,7 +36,7 @@ public final class ProfileIndexRecovery {
         var keys=new HashSet<String>();local.fieldNames().forEachRemaining(keys::add);remote.fieldNames().forEachRemaining(keys::add);
         int changed=0;
         for(String key:keys)if(!Objects.equals(local.get(key),remote.get(key)))changed++;
-        return new Status(snapshot.local().equals(snapshot.remote()),snapshot.localPresent(),local.size(),remote.size(),changed);
+        return new Status(snapshot.local().equals(snapshot.remote()),snapshot.localPresent(),local.size(),remote.size(),changed,repository.load(ProfileIndexSync.JOURNAL,ProfileIndexSync.Intent.class).isPresent());
     }
     public Status status()throws Exception{return summarize(capture());}
     private String preserve(Snapshot snapshot)throws IOException{
@@ -46,7 +46,7 @@ public final class ProfileIndexRecovery {
     public String backup()throws Exception{return preserve(capture());}
     public Status validate()throws Exception{
         var report=status();
-        if(!report.consistent())throw new DiagnosticException(DiagnosticException.Code.PROFILE_INDEX_DIVERGED);
+        if(!report.consistent()||report.pendingUpdate())throw new DiagnosticException(DiagnosticException.Code.PROFILE_INDEX_DIVERGED);
         return report;
     }
     public record Result(Status before,Optional<String> backup,boolean applied){}
@@ -64,6 +64,7 @@ public final class ProfileIndexRecovery {
     public Result reconcile(Source source,boolean apply)throws Exception{
         Objects.requireNonNull(source);
         var snapshot=capture();var before=summarize(snapshot);
+        if(before.pendingUpdate()&&apply)throw new DiagnosticException(DiagnosticException.Code.PROFILE_INDEX_DIVERGED);
         if(before.consistent()||!apply)return new Result(before,Optional.empty(),false);
         if(source==Source.LOCAL&&!snapshot.localPresent())throw new IOException("Cannot select missing local index");
         var chosen=source==Source.LOCAL?snapshot.local():snapshot.remote();
