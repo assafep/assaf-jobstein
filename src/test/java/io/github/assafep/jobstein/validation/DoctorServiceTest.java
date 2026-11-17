@@ -9,7 +9,8 @@ class DoctorServiceTest {
         var report=new DoctorService().inspect(List.of(new DoctorService.Probe("bad",()->{throw new IOException("private details");}),new DoctorService.Probe("good",()->{})));
         assertFalse(report.ready());
         assertEquals(ValidationResult.Status.FAIL,report.checks().getFirst().status());
-        assertEquals("IOException",report.checks().getFirst().message());
+        assertTrue(report.checks().getFirst().message().startsWith("[IO_FAILURE]"));
+        assertFalse(report.checks().getFirst().message().contains("private details"));
         assertEquals(ValidationResult.Status.PASS,report.checks().getLast().status());
     }
 }

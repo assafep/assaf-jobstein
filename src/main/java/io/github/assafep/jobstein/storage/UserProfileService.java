@@ -5,6 +5,7 @@ import io.github.assafep.jobstein.ai.*;
 import io.github.assafep.jobstein.config.ConfigurationRepository;
 import io.github.assafep.jobstein.domain.*;
 import io.github.assafep.jobstein.validation.DescriptorValidator;
+import io.github.assafep.jobstein.validation.DiagnosticException;
 import io.github.assafep.jobstein.provisioning.ResourceManifestRepository;
 import java.util.*;
 import java.nio.file.*;
@@ -82,10 +83,10 @@ public final class UserProfileService {
     private static ObjectNode registrySeed(){var node=JSON.createObjectNode().put("schemaVersion",1);node.putObject("entries");return node;}
     public JobsteinUser initialize(String fullName)throws Exception{
         String subject=drive.userInfo().path("sub").asText("");
-        if(subject.isBlank())throw new IOException("Google identity unavailable");
+        if(subject.isBlank())throw new DiagnosticException(DiagnosticException.Code.IDENTITY_UNAVAILABLE);
         var existing=repository.load("user",JobsteinUser.class);
         var user=existing.orElseGet(()->new JobsteinUser(UUID.randomUUID(),fullName,slug(fullName),subject));
-        if(!user.googleAccountSubject().equals(subject))throw new IOException("Google account differs from initialized user");
+        if(!user.googleAccountSubject().equals(subject))throw new DiagnosticException(DiagnosticException.Code.ACCOUNT_MISMATCH);
         repository.save("user",user);
         String root=folder("root",null,environment.equals("production")?"jobstein":"jobstein-"+environment);
         String home=folder("user",root,user.slug());
@@ -138,7 +139,7 @@ public final class UserProfileService {
         if(state.resumes().isEmpty())throw new IOException("Upload a resume first");
         var document=ResumeDocument.read(localResume);
         String hash=document.sha256();
-        if(!hash.equals(state.resumes().getLast().hash()))throw new IOException("Resume does not match current uploaded version");
+        if(!hash.equals(state.resumes().getLast().hash()))throw new DiagnosticException(DiagnosticException.Code.RESUME_MISMATCH);
         String journal="descriptor-"+state.profile().id();
         var previous=repository.load(journal,DescriptorIntent.class);
         DescriptorIntent intent;
@@ -166,13 +167,13 @@ public final class UserProfileService {
     }
     public JsonNode descriptor(String slug)throws Exception{
         verifyAccount();
-        var state=get(slug);if(state.descriptorId()==null)throw new IOException("Descriptor missing");
+        var state=get(slug);if(state.descriptorId()==null)throw new DiagnosticException(DiagnosticException.Code.DESCRIPTOR_MISSING);
         var data=drive.readJson(state.descriptorId());
         if(state.resumes().isEmpty())throw new IOException("Resume missing");
         var version=state.resumes().getLast();
         DescriptorValidator.validateEnvelope(data,state.profile().id(),version.hash());
         var document=ResumeDocument.readBytes(drive.readBytes(version.id(),ResumeDocument.MAX_BYTES));
-        if(!version.hash().equals(document.sha256()))throw new IOException("Stored resume checksum mismatch");
+        if(!version.hash().equals(document.sha256()))throw new DiagnosticException(DiagnosticException.Code.RESUME_MISMATCH);
         DescriptorValidator.validate(data.path("descriptor"),document.text());
         return data;
     }
@@ -196,6 +197,6 @@ public final class UserProfileService {
         verifyAccount();
         drive.readJson(resource("user/registry"));
         var remote=drive.readJson(resource("user/profiles-index"));
-        if(!JSON.valueToTree(profiles()).equals(remote))throw new IOException("Local and remote profile indexes differ");
+        if(!JSON.valueToTree(profiles()).equals(remote))throw new DiagnosticException(DiagnosticException.Code.PROFILE_INDEX_DIVERGED);
     }
 }

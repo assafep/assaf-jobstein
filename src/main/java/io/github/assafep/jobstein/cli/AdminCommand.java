@@ -8,6 +8,8 @@ import io.github.assafep.jobstein.google.*;
 import io.github.assafep.jobstein.security.*;
 import io.github.assafep.jobstein.storage.*;
 import io.github.assafep.jobstein.provisioning.*;
+import io.github.assafep.jobstein.validation.DiagnosticException;
+import io.github.assafep.jobstein.validation.Diagnostics;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
@@ -101,7 +103,7 @@ final class AdminCommand implements Callable<Integer> {
                 String ref=references.getOrDefault(key,values.get(key));
                 if(ref==null){
                     ref="secret://ai/"+selected+"/"+id+"/"+key;
-                    if(nonInteractive||System.console()==null)throw new IOException("Use --secret-ref for existing credentials or an interactive terminal");
+                    if(nonInteractive||System.console()==null)throw new DiagnosticException(DiagnosticException.Code.AI_CREDENTIAL_REQUIRED);
                     char[] secret=System.console().readPassword("%s: ",field.path("displayName").asText(key));
                     if(secret==null||secret.length==0)throw new IOException("Secret required");
                     try{secrets.put(ref,new String(secret).getBytes(StandardCharsets.UTF_8));}finally{Arrays.fill(secret,'\0');}
@@ -125,7 +127,7 @@ final class AdminCommand implements Callable<Integer> {
     private String selectedProfile(){return ask("Profile slug",profile,null);}
     private Path selectedResume(){return Path.of(ask("Resume PDF",resume==null?null:resume.toString(),null));}
     private void generate(String slug,Path file)throws Exception{
-        if(!confirm("Allow configured AI provider to process resume contents",allowAi))throw new IOException("AI processing not authorized");
+        if(!confirm("Allow configured AI provider to process resume contents",allowAi))throw new DiagnosticException(DiagnosticException.Code.AI_CONSENT_REQUIRED);
         var service=users();service.generate(slug,file);
         out().println(service.descriptor(slug).toPrettyString());
         if(confirm("Approve descriptor and activate profile",approveDescriptor))service.activate(slug,true);
@@ -165,7 +167,7 @@ final class AdminCommand implements Callable<Integer> {
             this::configureGoogle,this::authorize,
             ()->{if(ai().existing().isEmpty())configureAi(false,true);ai().validate();},
             ()->{var service=users();String existing=config.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).map(io.github.assafep.jobstein.domain.JobsteinUser::fullName).orElse(null);service.initialize(ask("Full name",name,existing));},
-            ()->{createProfile();if(users().profiles().entries().values().stream().noneMatch(p->p.profile().status()==io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE))throw new IOException("Approve an applicant descriptor to continue");}
+            ()->{createProfile();if(users().profiles().entries().values().stream().noneMatch(p->p.profile().status()==io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE))throw new DiagnosticException(DiagnosticException.Code.APPROVAL_REQUIRED);}
         ));
         return doctor()?0:1;
     }
@@ -208,7 +210,7 @@ final class AdminCommand implements Callable<Integer> {
                 case "profile list":users().profiles().entries().forEach((k,v)->out().println(k+" "+v.profile().status()));break;
                 case "profile show":out().println(users().get(selectedProfile()));break;
                 case "profile validate":users().descriptor(selectedProfile());break;
-                case "profile activate":{String slug=selectedProfile();out().println(users().descriptor(slug).toPrettyString());if(!confirm("Approve descriptor",approveDescriptor))throw new IOException("Approval required");users().activate(slug,true);break;}
+                case "profile activate":{String slug=selectedProfile();out().println(users().descriptor(slug).toPrettyString());if(!confirm("Approve descriptor",approveDescriptor))throw new DiagnosticException(DiagnosticException.Code.APPROVAL_REQUIRED);users().activate(slug,true);break;}
                 case "profile deactivate":users().activate(selectedProfile(),false);break;
                 case "profile resume upload":case "profile resume update":users().upload(selectedProfile(),selectedResume());break;
                 case "profile resume history":users().get(selectedProfile()).resumes().forEach(out()::println);break;
@@ -221,6 +223,6 @@ final class AdminCommand implements Callable<Integer> {
             }
         }catch(io.github.assafep.jobstein.environment.EnvironmentLock.BusyException e){spec.commandLine().getErr().println(e.getMessage());return 4;}
         catch(InterruptedException e){Thread.currentThread().interrupt();spec.commandLine().getErr().println("Interrupted");return 1;}
-        catch(Exception e){spec.commandLine().getErr().println("Operation failed: "+e.getClass().getSimpleName());return 1;}
+        catch(Exception e){spec.commandLine().getErr().println(Diagnostics.describe(e));return 1;}
     }
 }

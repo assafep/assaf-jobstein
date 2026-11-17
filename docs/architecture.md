@@ -47,3 +47,6 @@ The initial descriptor schema is intentionally extractive: summary and skill str
 
 ## Local privacy and account binding
 Administrative CLI environments and configuration directories use POSIX owner-only directory permissions (0700); new and replaced YAML configuration files use 0600. Existing files are not recursively migrated. POSIX filesystems are required for local state. This is access control, not encryption. OAuth reauthorization checks the newly authorized subject against the initialized user before replacing the refresh token. Profile mutations, descriptor retrieval and registry operations also verify the current account. Doctor checks local and remote index equality and fails on divergence. The current implementation still assumes one local writer and does not yet provide an account reset or conflict-resolution command.
+
+## Diagnostic output
+Administrative CLI errors and doctor probes use fixed diagnostic codes and recovery guidance. Raw third-party exceptions, response bodies, nested causes and stack traces are not printed by this formatter. Unknown errors receive generic guidance. The formatter is not a general-purpose log-redaction system; explicit user-requested profile/descriptor output and the interactive OAuth authorization URL still display their intended contents.

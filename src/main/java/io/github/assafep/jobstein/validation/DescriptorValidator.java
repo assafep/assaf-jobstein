@@ -7,7 +7,7 @@ import java.util.*;
 public final class DescriptorValidator {
     private static final Set<String> FIELDS=Set.of("professionalSummary","skills","skillEvidence","employmentHistory","education","synthetic");
     private DescriptorValidator(){}
-    private static IOException invalid(String reason){return new IOException("Invalid applicant descriptor: "+reason);}
+    private static IOException invalid(String reason){return new DiagnosticException(DiagnosticException.Code.DESCRIPTOR_INVALID,new IOException(reason));}
     private static String normalize(String value){return value.replaceAll("(?U)\\s+"," ").strip();}
     private static String text(JsonNode value)throws IOException{
         if(!value.isTextual()||normalize(value.asText()).isEmpty())throw invalid("empty or non-text evidence");

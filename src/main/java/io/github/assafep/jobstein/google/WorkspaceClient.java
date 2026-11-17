@@ -22,8 +22,9 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     }
     private static String q(String s){return URLEncoder.encode(s,StandardCharsets.UTF_8);}
     private static String id(String s){if(s==null||!s.matches("[a-zA-Z0-9_-]+"))throw new IllegalArgumentException("Invalid resource ID");return s;}
-    private static final class WorkspaceHttpException extends IOException {
+    public static final class WorkspaceHttpException extends IOException {
         private final int status;
+        public int status(){return status;}
         WorkspaceHttpException(int status){super("Google Workspace request failed (HTTP "+status+")");this.status=status;}
     }
     public String ensureUpload(String parent,String name,String mime,byte[] data,String allocatedId)throws Exception{

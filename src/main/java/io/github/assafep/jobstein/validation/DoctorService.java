@@ -13,7 +13,7 @@ public final class DoctorService {
         for(var probe:probes){
             try{probe.action().run();checks.add(new Check(probe.id(),Status.PASS,""));}
             catch(InterruptedException e){Thread.currentThread().interrupt();throw e;}
-            catch(Exception e){checks.add(new Check(probe.id(),Status.FAIL,e.getClass().getSimpleName()));}
+            catch(Exception e){checks.add(new Check(probe.id(),Status.FAIL,Diagnostics.describe(e)));}
         }
         return new ValidationResult(checks);
     }

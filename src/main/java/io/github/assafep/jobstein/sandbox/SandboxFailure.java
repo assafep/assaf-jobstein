@@ -2,6 +2,7 @@ package io.github.assafep.jobstein.sandbox;
 
 import io.github.assafep.jobstein.provisioning.OnboardingService;
 import java.io.IOException;
+import io.github.assafep.jobstein.validation.DiagnosticException;
 import java.util.Set;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -19,7 +20,7 @@ public final class SandboxFailure {
         return ()->{
             if(target.filter(step::equals).isPresent()){
                 progress.accept("SIMULATED FAILURE: "+step);
-                throw new IOException("Injected sandbox failure");
+                throw new DiagnosticException(DiagnosticException.Code.SIMULATED_FAILURE);
             }
             action.run();
         };

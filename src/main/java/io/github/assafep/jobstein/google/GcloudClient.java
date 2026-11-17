@@ -3,6 +3,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import io.github.assafep.jobstein.validation.DiagnosticException;
 
 public final class GcloudClient {
     public static final List<String> APIS = List.of("drive.googleapis.com","docs.googleapis.com","gmail.googleapis.com","calendar-json.googleapis.com");
@@ -16,9 +17,9 @@ public final class GcloudClient {
             process = new ProcessBuilder(command).redirectErrorStream(true).redirectOutput(output.toFile()).start();
             if (!process.waitFor(180, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
-                throw new IOException("gcloud operation timed out");
+                throw new DiagnosticException(DiagnosticException.Code.GCP_TIMEOUT);
             }
-            if (process.exitValue() != 0) throw new IOException("gcloud operation failed: " + arguments[0] + " (exit " + process.exitValue() + ")");
+            if (process.exitValue() != 0) throw new DiagnosticException(DiagnosticException.Code.GCP_COMMAND_FAILED);
             return Files.readString(output).trim();
         } finally {
             if (process != null && process.isAlive()) process.destroyForcibly();
@@ -40,7 +41,7 @@ public final class GcloudClient {
         validateProject(project);
         execute("projects","describe",project,"--format=value(projectId)");
         var enabled = Set.copyOf(execute("services","list","--enabled","--project="+project,"--format=value(config.name)").lines().toList());
-        if (!enabled.containsAll(APIS)) throw new IOException("Required Google APIs are not enabled");
+        if (!enabled.containsAll(APIS)) throw new DiagnosticException(DiagnosticException.Code.GCP_APIS_MISSING);
     }
     public void configure(String project, boolean create) throws IOException, InterruptedException {
         validateProject(project);
