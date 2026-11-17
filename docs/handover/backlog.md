@@ -11,7 +11,7 @@ This is an actionable queue, not a promise that all entries remain bugs. Verify 
 
 ## P1 — Security and operational usability
 - Evaluate safe missing-entry semantics for native Linux Secret Service; if reliable, enable only with tested behavior and explicit backend selection. Otherwise document the blocker rather than weaken fail-closed behavior. Credential migration needs an explicit reviewed workflow.
-- Audit POSIX file ownership, symlink/hardlink behavior and configuration migration; avoid claiming encryption. Improve actionable sanitized diagnostics.
+- Audit POSIX file ownership, ancestor symlink behavior and configuration migration; avoid claiming encryption. Existing credential hard links now fail closed (synthetic direct Java checks passed; full runner validation pending); concurrent filesystem replacement remains outside the single-writer guarantee. Improve actionable sanitized diagnostics.
 - Review API contract handling, bounded reads, pagination and safe retry behavior where it serves administrative validation. Use loopback tests, not real credentials.
 - Improve doctor checks and onboarding checkpoint validation, including clear repair guidance and no unintended remote writes.
 

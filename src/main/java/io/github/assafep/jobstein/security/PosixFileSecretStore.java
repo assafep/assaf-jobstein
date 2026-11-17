@@ -58,6 +58,16 @@ public final class PosixFileSecretStore implements SecretStore {
                     .equals(PosixFilePermissions.fromString("rw-------"))) {
                 throw new IOException("Secret file must be a regular file with mode 0600");
             }
+            // Permissions alone do not protect a credential exposed through another hard link.
+            // Fail closed on filesystems that cannot establish exclusive link ownership.
+            try {
+                Object links = Files.getAttribute(file, "unix:nlink", LinkOption.NOFOLLOW_LINKS);
+                if (!(links instanceof Number count) || count.longValue() != 1) {
+                    throw new IOException("Secret file must have exactly one hard link");
+                }
+            } catch (UnsupportedOperationException | IllegalArgumentException e) {
+                throw new IOException("Secret file hard-link validation is unavailable");
+            }
         }
         return Optional.of(file);
     }
