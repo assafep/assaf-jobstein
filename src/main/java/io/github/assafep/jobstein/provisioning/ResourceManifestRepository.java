@@ -13,11 +13,16 @@ public final class ResourceManifestRepository {
     }
 
     private final ConfigurationRepository repository;
+    private final String configName;
     public ResourceManifestRepository(ConfigurationRepository repository) {
+        this(repository,"resource-manifest");
+    }
+    public ResourceManifestRepository(ConfigurationRepository repository,String configName) {
         this.repository = Objects.requireNonNull(repository);
+        this.configName=Objects.requireNonNull(configName);
     }
     public Manifest load() throws IOException {
-        return repository.load("resource-manifest", Manifest.class).orElseGet(() -> new Manifest(1, Map.of()));
+        return repository.load(configName, Manifest.class).orElseGet(() -> new Manifest(1, Map.of()));
     }
     public synchronized void remember(String logicalId, String resourceId) throws IOException {
         if (logicalId == null || !logicalId.matches("[a-zA-Z0-9][a-zA-Z0-9._/-]{0,255}")
@@ -26,6 +31,6 @@ public final class ResourceManifestRepository {
         String previous = ids.putIfAbsent(logicalId, resourceId);
         if (previous != null && !previous.equals(resourceId))
             throw new IllegalStateException("Resource already registered: " + logicalId);
-        repository.save("resource-manifest", new Manifest(1, ids));
+        repository.save(configName, new Manifest(1, ids));
     }
 }

@@ -49,9 +49,18 @@ public final class LocalWorkspaceStorage implements WorkspaceStorage {
         if(!matches.isEmpty())return matches.getFirst().id();
         String id=UUID.randomUUID().toString();remember(new Resource(id,parent,name,FOLDER,marker));return id;
     }
+    @Override public String allocateFileId(){return UUID.randomUUID().toString();}
     @Override public synchronized String upload(String parent,String name,String mime,byte[] data)throws IOException{
+        return ensureUpload(parent,name,mime,data,allocateFileId());
+    }
+    @Override public synchronized String ensureUpload(String parent,String name,String mime,byte[] data,String id)throws IOException{
         parent(parent);
-        String id=UUID.randomUUID().toString();
+        var existing=index().resources().get(id);
+        if(existing!=null){
+            if(!Objects.equals(parent,existing.parent())||!name.equals(existing.name())||!mime.equals(existing.mime()))
+                throw new IOException("Allocated ID conflicts with unexpected resource");
+            return id;
+        }
         AtomicFiles.write(content(id),data);
         remember(new Resource(id,parent,name,mime,""));
         return id;

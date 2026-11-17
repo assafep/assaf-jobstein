@@ -17,11 +17,26 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         var builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+oauth.accessToken());
         if(body!=null) builder.header("Content-Type",type);
         var response=http.send(builder.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofByteArray(body)).build(),HttpResponse.BodyHandlers.ofString());
-        if(response.statusCode()<200 || response.statusCode()>=300) throw new IOException("Google Workspace request failed (HTTP "+response.statusCode()+")");
+        if(response.statusCode()<200 || response.statusCode()>=300) throw new WorkspaceHttpException(response.statusCode());
         return response.body().isBlank()?JSON.createObjectNode():JSON.readTree(response.body());
     }
     private static String q(String s){return URLEncoder.encode(s,StandardCharsets.UTF_8);}
     private static String id(String s){if(s==null||!s.matches("[a-zA-Z0-9_-]+"))throw new IllegalArgumentException("Invalid resource ID");return s;}
+    private static final class WorkspaceHttpException extends IOException {
+        private final int status;
+        WorkspaceHttpException(int status){super("Google Workspace request failed (HTTP "+status+")");this.status=status;}
+    }
+    public String ensureUpload(String parent,String name,String mime,byte[] data,String allocatedId)throws Exception{
+        try{return uploadWithId(parent,name,mime,data,allocatedId);}
+        catch(WorkspaceHttpException e){
+            if(e.status!=409)throw e;
+            var existing=file(allocatedId);
+            if(existing.path("trashed").asBoolean()||!name.equals(existing.path("name").asText())||
+                !mime.equals(existing.path("mimeType").asText())||!existing.path("capabilities").path("canEdit").asBoolean()||
+                !java.util.stream.StreamSupport.stream(existing.path("parents").spliterator(),false).anyMatch(v->parent.equals(v.asText())))throw new IOException("Allocated Drive ID conflicts with unexpected resource");
+            return allocatedId;
+        }
+    }
     public JsonNode userInfo() throws Exception {return request("GET","https://openidconnect.googleapis.com/v1/userinfo",null,null);}
     public void validate() throws Exception {
         userInfo();
@@ -42,10 +57,17 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         metadata.putObject("appProperties").put("jobsteinId",marker);
         return request("POST","https://www.googleapis.com/drive/v3/files?fields=id",JSON.writeValueAsBytes(metadata),"application/json").path("id").asText();
     }
+    public String allocateFileId() throws Exception {
+        return id(request("GET","https://www.googleapis.com/drive/v3/files/generateIds?count=1&space=drive",null,null).path("ids").path(0).asText());
+    }
     public String upload(String parent,String name,String mime,byte[] data) throws Exception {
+        return uploadWithId(parent,name,mime,data,null);
+    }
+    public String uploadWithId(String parent,String name,String mime,byte[] data,String allocatedId) throws Exception {
         String boundary="jobstein_"+UUID.randomUUID();
         var metadata=JSON.createObjectNode().put("name",name).put("mimeType",mime);
         metadata.putArray("parents").add(id(parent));
+        if(allocatedId!=null)metadata.put("id",id(allocatedId));
         var bytes=new ByteArrayOutputStream();
         bytes.write(("--"+boundary+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+JSON.writeValueAsString(metadata)+"\r\n--"+boundary+"\r\nContent-Type: "+mime+"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         bytes.write(data);bytes.write(("\r\n--"+boundary+"--\r\n").getBytes(StandardCharsets.UTF_8));

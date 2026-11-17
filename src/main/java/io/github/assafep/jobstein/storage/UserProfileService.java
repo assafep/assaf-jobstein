@@ -14,6 +14,7 @@ public final class UserProfileService {
     private final ConfigurationRepository repository;
     private final ResourceManifestRepository manifest;
     private final WorkspaceStorage drive;
+    private final ResourceManifestRepository pending;
     private final AiExecution ai;
     private final String environment;
     public record ProfileState(ApplicantProfile profile, List<ResumeVersion> resumes, String descriptorId) {
@@ -22,7 +23,7 @@ public final class UserProfileService {
     public record ResumeVersion(String id,String hash,String name){}
     public record Profiles(Map<String,ProfileState> entries){public Profiles{entries=Map.copyOf(entries);}}
     public UserProfileService(ConfigurationRepository repository,WorkspaceStorage drive,AiExecution ai,String environment){
-        this.repository=repository;this.manifest=new ResourceManifestRepository(repository);this.drive=drive;this.ai=ai;this.environment=environment;
+        this.repository=repository;this.manifest=new ResourceManifestRepository(repository);this.pending=new ResourceManifestRepository(repository,"upload-intents");this.drive=drive;this.ai=ai;this.environment=environment;
     }
     public static String slug(String name){
         var value=java.text.Normalizer.normalize(name,java.text.Normalizer.Form.NFKD).replaceAll("\\p{M}","").toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+",".").replaceAll("^\\.|\\.$","");
@@ -48,10 +49,20 @@ public final class UserProfileService {
         if(known!=null){var info=drive.file(known);if(info.path("trashed").asBoolean()||!info.path("capabilities").path("canEdit").asBoolean())throw new IOException("Inaccessible folder: "+name);return known;}
         String id=drive.ensureFolder(parent,name,"jobstein:"+environment+":"+key);manifest.remember(key,id);return id;
     }
+    private String retryableUpload(String key,String parent,String name,String mime,byte[] data)throws Exception{
+        String allocated=pending.load().resourceIds().get(key);
+        if(allocated==null){
+            allocated=drive.allocateFileId();
+            pending.remember(key,allocated);
+        }
+        String actual=drive.ensureUpload(parent,name,mime,data,allocated);
+        if(!allocated.equals(actual))throw new IOException("Storage returned unexpected resource ID");
+        return actual;
+    }
     private String seed(String key,String parent,String name,JsonNode data)throws Exception{
         String known=manifest.load().resourceIds().get(key);
         if(known!=null){drive.readJson(known);return known;}
-        String id=drive.upload(parent,name,"application/json",JSON.writeValueAsBytes(data));manifest.remember(key,id);return id;
+        String id=retryableUpload("seed/"+key,parent,name,"application/json",JSON.writeValueAsBytes(data));manifest.remember(key,id);return id;
     }
     private static ObjectNode registrySeed(){var node=JSON.createObjectNode().put("schemaVersion",1);node.putObject("entries");return node;}
     public JobsteinUser initialize(String fullName)throws Exception{
@@ -67,6 +78,7 @@ public final class UserProfileService {
         seed("user/metadata",home,"user.json",JSON.valueToTree(user));
         seed("user/registry",shared,"application-registry.json",registrySeed());
         seed("user/profiles-index",shared,"profiles-index.json",JSON.valueToTree(profiles()));
+        saveProfiles(profiles());
         for(String state:List.of("gmail-state","calendar-state","user-preferences","automation-policy"))
             seed("user/"+state,shared,state+".json",JSON.createObjectNode().put("schemaVersion",1));
         return user;
@@ -91,8 +103,8 @@ public final class UserProfileService {
     public ProfileState upload(String slug,Path path)throws Exception{
         var state=get(slug);var document=ResumeDocument.read(path);byte[] bytes=document.bytes();
         String hash=document.sha256();
-        if(!state.resumes().isEmpty()&&state.resumes().getLast().hash().equals(hash))return state;
-        String id=drive.upload(resource("profile/"+slug+"/resume"),hash+".pdf","application/pdf",bytes);
+        if(!state.resumes().isEmpty()&&state.resumes().getLast().hash().equals(hash)){saveProfiles(profiles());return state;}
+        String id=retryableUpload("resume/"+state.profile().id()+"/"+hash,resource("profile/"+slug+"/resume"),hash+".pdf","application/pdf",bytes);
         var versions=new ArrayList<>(state.resumes());versions.add(new ResumeVersion(id,hash,path.getFileName().toString()));
         var updated=new ProfileState(withStatus(state.profile(),ApplicantProfile.Status.RESUME_UPLOADED),versions,null);
         saveProfile(updated);return updated;
