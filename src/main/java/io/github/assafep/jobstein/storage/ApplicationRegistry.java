@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.node.*;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
-import java.util.function.Supplier;
 
 public final class ApplicationRegistry {
     public enum Status { RESERVED, SUBMITTING, SUBMISSION_UNKNOWN, APPLIED, COMPLETED, CANCELLED_BEFORE_SUBMISSION }
@@ -15,10 +14,44 @@ public final class ApplicationRegistry {
     }
     private final Store store;
     public ApplicationRegistry(Store store){this.store=Objects.requireNonNull(store);}
+    public static void validate(ObjectNode state)throws IOException { entries(state); }
     private static ObjectNode entries(ObjectNode state)throws IOException{
-        if(state.path("schemaVersion").asInt()!=1 || !(state.path("entries") instanceof ObjectNode entries))
+        if(state==null || !state.path("schemaVersion").isIntegralNumber()
+            || !state.path("schemaVersion").canConvertToInt() || state.path("schemaVersion").intValue()!=1
+            || !(state.path("entries") instanceof ObjectNode entries))
             throw new IOException("Invalid application registry");
+        var ids=new HashSet<UUID>();
+        var fields=entries.fields();
+        while(fields.hasNext()){
+            var field=fields.next();
+            var item=field.getValue();
+            try{
+                if(field.getKey().isBlank() || !item.isObject())throw new IllegalArgumentException();
+                UUID id=uuid(item.path("applicationId"));
+                uuid(item.path("profileId"));
+                if(!ids.add(id))throw new IllegalArgumentException();
+                Status.valueOf(requiredText(item.path("status")));
+                Instant.parse(requiredText(item.path("updatedAt")));
+                if(!item.path("aliases").isArray())throw new IllegalArgumentException();
+                var aliases=new HashSet<String>();
+                for(var alias:item.path("aliases"))
+                    if(!aliases.add(requiredText(alias)))throw new IllegalArgumentException();
+            }catch(RuntimeException invalid){
+                // Do not include persisted posting identifiers or values in diagnostics.
+                throw new IOException("Invalid application registry entry");
+            }
+        }
         return entries;
+    }
+    private static String requiredText(JsonNode value){
+        if(!value.isTextual() || value.textValue().isBlank())throw new IllegalArgumentException();
+        return value.textValue();
+    }
+    private static UUID uuid(JsonNode value){
+        String text=requiredText(value);
+        UUID id=UUID.fromString(text);
+        if(!id.toString().equals(text))throw new IllegalArgumentException();
+        return id;
     }
     public synchronized Optional<UUID> reserve(String canonicalId, Set<String> aliases, UUID profileId)throws Exception{
         if(canonicalId==null||canonicalId.isBlank()||profileId==null)throw new IllegalArgumentException("Posting and profile required");

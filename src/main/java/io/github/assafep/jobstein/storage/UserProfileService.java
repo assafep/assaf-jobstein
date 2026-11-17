@@ -225,7 +225,9 @@ public final class UserProfileService {
     public ProfileIndexRecovery recovery(){return new ProfileIndexRecovery(repository,drive,()->{verifyAccount();return resource("user/profiles-index");},this::user);}
     public void validateUser()throws Exception{
         verifyAccount();
-        drive.readJson(resource("user/registry"));
+        var registry=drive.readJson(resource("user/registry"));
+        if(!(registry instanceof ObjectNode object))throw new IOException("Invalid application registry");
+        ApplicationRegistry.validate(object);
         indexSync().validate();
     }
 }

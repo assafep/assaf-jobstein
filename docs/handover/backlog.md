@@ -7,7 +7,7 @@ This is an actionable queue, not a promise that all entries remain bugs. Verify 
 - Audit seed JSON and manifest identity: validate expected file ID, parent, MIME, editing/trash status and user ownership on reuse without overwriting mutable remote state. Detect missing local metadata and unsafe adoption; do not silently initialize a new user over an existing user root. Add fault tests.
 - Audit descriptor journal cleanup, explicit regeneration and activation across crash boundaries; protect pending state from accidental replacement, and distinguish recoverable completion from mismatched payloads.
 - Audit profile-index journal and explicit reconciliation for ownership validation, stale snapshots and lost write responses. Keep the single-writer guarantee explicit; do not claim distributed atomicity.
-- Validate application registry schema, ownership and allowed transitions; preserve user-wide alias deduplication and unknown submission state. No real application submission.
+- Continue application registry ownership and allowed-transition audit; strict persisted entry schema validation is implemented (54 tests and sandbox smoke passed locally; publication CI pending). Preserve user-wide alias deduplication and unknown submission state. No real application submission.
 
 ## P1 — Security and operational usability
 - Evaluate safe missing-entry semantics for native Linux Secret Service; if reliable, enable only with tested behavior and explicit backend selection. Otherwise document the blocker rather than weaken fail-closed behavior. Credential migration needs an explicit reviewed workflow.
