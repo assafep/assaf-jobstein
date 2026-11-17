@@ -29,3 +29,6 @@ Key directories: src/main/java/io/github/assafep/jobstein/{cli,ai,google,storage
 
 ## Update convention
 When implementing, append a short factual entry with the change, test commands/results and open limitations. Do not invent the commit SHA before commit creation or claim CI passed until queried. Maintain backlog separately. Private account details must never appear in this file.
+
+## Windows development setup
+Documented Ubuntu WSL 2 setup with explicit JDK 21 JAVA_HOME/PATH and Bash persistence instructions. Added Gradle toolchain resolution and labeled intentional smoke-test failures with a final success marker. In an isolated WSL checkout, `./gradlew --no-daemon test installDist` passed all 51 tests without skips; `bash scripts/smoke-test.sh`, live-script syntax checks and `bash scripts/test-live-guards.sh` passed. Native Windows local state remains unsupported because POSIX permissions are required. No live provider verification was performed; publication CI must be checked for the resulting commit.

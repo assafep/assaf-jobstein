@@ -6,11 +6,13 @@ trap 'rm -rf "$home"' EXIT
 export JAVA_OPTS="${JAVA_OPTS:-} -Duser.home=$home"
 cli=./build/install/jobstein/bin/jobstein
 "$cli" --help
+echo 'Checking intentional onboarding failure (expected error follows)'
 if "$cli" onboard --env sandbox --non-interactive --simulate-failure ai-configure > "$home/failure.log"; then
   echo 'Expected simulated AI configuration failure' >&2
   exit 1
 fi
 grep 'SIMULATED FAILURE: ai-configure' "$home/failure.log"
+echo 'Checking incomplete sandbox diagnostics (expected FAIL lines follow)'
 if "$cli" doctor --env sandbox; then
   echo 'Expected incomplete sandbox diagnostics to fail' >&2
   exit 1
@@ -32,6 +34,7 @@ grep 'Completed: ai-configure' "$home/recovery.log"
 "$cli" ai integration create --env sandbox --integration advanced --field model=mock-grok-advanced
 "$cli" ai agent configure --env sandbox --agent applicant-profile-generator --integration advanced
 "$cli" ai agent show --env sandbox --agent applicant-profile-generator | grep advanced
+echo 'Checking referenced integration removal is rejected (expected error follows)'
 if "$cli" ai integration remove --env sandbox --integration advanced; then
   echo 'Expected referenced integration removal to fail' >&2
   exit 1
@@ -41,6 +44,7 @@ fi
 "$cli" ai integration remove --env sandbox --integration advanced
 "$cli" profile resume update --env sandbox --profile product.manager
 "$cli" profile list --env sandbox | grep 'product.manager RESUME_UPLOADED'
+echo 'Checking invalidated descriptor is rejected (expected error follows)'
 if "$cli" profile descriptor validate --env sandbox --profile product.manager; then
   echo 'Expected stale descriptor validation to fail' >&2
   exit 1
@@ -54,3 +58,4 @@ fi
 "$cli" state recovery inspect --env sandbox | grep CLEAN
 "$cli" state recovery resume --env sandbox | grep "Dry run"
 "$cli" state recovery resume --env sandbox --apply | grep "No pending update"
+echo 'PASS: all sandbox smoke checks completed'
