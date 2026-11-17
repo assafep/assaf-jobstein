@@ -50,3 +50,6 @@ Administrative CLI environments and configuration directories use POSIX owner-on
 
 ## Diagnostic output
 Administrative CLI errors and doctor probes use fixed diagnostic codes and recovery guidance. Raw third-party exceptions, response bodies, nested causes and stack traces are not printed by this formatter. Unknown errors receive generic guidance. The formatter is not a general-purpose log-redaction system; explicit user-requested profile/descriptor output and the interactive OAuth authorization URL still display their intended contents.
+
+## Profile index reconciliation
+Use state status, state validate, state backup, and state reconcile --source local|remote [--apply]. Reconciliation defaults to dry run. Explicit application saves both index copies in an owner-only local backup, validates selected profile ownership and UUID uniqueness, rechecks the snapshot for changes, and updates only the other index. This is index-only recovery, not a full environment backup or restoration of underlying files. No automatic merging or distributed compare-and-swap is provided. Inspect both copies before selecting a source.

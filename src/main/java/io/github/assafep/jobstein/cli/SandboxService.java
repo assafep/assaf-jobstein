@@ -80,7 +80,7 @@ final class SandboxService {
         return value;
     }
     private static String slug(String role){return io.github.assafep.jobstein.storage.UserProfileService.slug(role);}
-    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault,Path resume,boolean approveDescriptor,String simulateFailure)throws Exception{
+    int execute(String op,String role,String profile,String agent,String integration,Map<String,String> fields,boolean makeDefault,Path resume,boolean approveDescriptor,String simulateFailure,String reconciliationSource,boolean applyReconciliation)throws Exception{
         out.println("SANDBOX — simulated data; no external API calls");
         if(op.equals("onboard")){
             var failure=SandboxFailure.parse(simulateFailure);
@@ -94,9 +94,10 @@ final class SandboxService {
                 failure.wrap("first-profile",()->initializeProfile("Software Engineer",null),out::println)
             ));
             out.println("Simulated GCP, OAuth, AI, Drive, user and first profile initialized");
-            return execute("doctor",null,null,null,null,Map.of(),false,null,false,null);
+            return execute("doctor",null,null,null,null,Map.of(),false,null,false,null,null,false);
         }
         var service=users();
+        if(op.startsWith("state "))return StateCommands.execute(op,service.recovery(),reconciliationSource,applyReconciliation,out);
         switch(op){
             case "doctor" -> {
                 var report=new DoctorService().inspect(List.of(

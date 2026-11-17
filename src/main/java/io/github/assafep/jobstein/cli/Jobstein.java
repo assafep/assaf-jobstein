@@ -52,6 +52,7 @@ public final class Jobstein {
         addGroup(ai, "provider", "list", "models");
         addGroup(ai, "integration", "create", "update", "list", "show", "validate", "remove");
         addGroup(ai, "agent", "configure", "list", "show", "reset");
+        addGroup(root, "state", "status", "validate", "backup", "reconcile");
         CommandLine profile = root.getSubcommands().get("profile");
         addGroup(profile, "resume", "upload", "update", "history");
         addGroup(profile, "descriptor", "show", "regenerate", "validate");

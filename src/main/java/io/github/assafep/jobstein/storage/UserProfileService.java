@@ -193,6 +193,7 @@ public final class UserProfileService {
             public void write(ObjectNode state)throws Exception {verifyAccount();drive.updateJson(resource("user/registry"),state);}
         });
     }
+    public ProfileIndexRecovery recovery(){return new ProfileIndexRecovery(repository,drive,()->{verifyAccount();return resource("user/profiles-index");},this::user);}
     public void validateUser()throws Exception{
         verifyAccount();
         drive.readJson(resource("user/registry"));

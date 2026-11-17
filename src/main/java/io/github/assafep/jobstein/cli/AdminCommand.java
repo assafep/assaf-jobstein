@@ -38,6 +38,8 @@ final class AdminCommand implements Callable<Integer> {
     @CommandLine.Option(names="--approve-descriptor") boolean approveDescriptor;
     @CommandLine.Option(names="--non-interactive") boolean nonInteractive;
     @CommandLine.Option(names="--simulate-failure",description="Sandbox-only onboarding checkpoint failure") String simulateFailure;
+    @CommandLine.Option(names="--source",description="Reconciliation source: local or remote") String reconciliationSource;
+    @CommandLine.Option(names="--apply",description="Apply reconciliation after preserving both copies") boolean applyReconciliation;
     private ConfigurationRepository config;
     private SecretStore secrets;
     private EnvironmentService environments;
@@ -177,11 +179,12 @@ final class AdminCommand implements Callable<Integer> {
             if(simulateFailure!=null&&(!"sandbox".equals(env)||!operation.equals("onboard")))throw new IllegalArgumentException("Failure injection is only available for sandbox onboarding");
             try(var ignored=io.github.assafep.jobstein.environment.EnvironmentLock.acquire(environments.directory(env))){
             io.github.assafep.jobstein.security.PrivateState.directory(environments.directory(env));
-            if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor,simulateFailure);
+            if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor,simulateFailure,reconciliationSource,applyReconciliation);
             directory=environments.directory(env);
             if(!operation.equals("onboard"))environments.validate(env);
             config=new ConfigurationRepository(directory);
             secrets=new PosixFileSecretStore(directory.resolve("secrets"));
+            if(operation.startsWith("state "))return StateCommands.execute(operation,users().recovery(),reconciliationSource,applyReconciliation,out());
             switch(operation){
                 case "onboard":return onboard();
                 case "doctor":return doctor()?0:1;
