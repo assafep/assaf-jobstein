@@ -13,7 +13,10 @@ public final class ProfileOnboarding {
     private final UserProfileService service;
     public ProfileOnboarding(UserProfileService service){this.service=Objects.requireNonNull(service);}
     public UserProfileService.ProfileState run(String role,Optional<Path> supplied,ResumeSource resumeSource,Consent consent,Review review)throws Exception{
-        var state=service.create(role);
+        return run(role,Optional.empty(),supplied,resumeSource,consent,review);
+    }
+    public UserProfileService.ProfileState run(String role,Optional<UUID> expectedId,Optional<Path> supplied,ResumeSource resumeSource,Consent consent,Review review)throws Exception{
+        var state=service.create(role,expectedId);
         String slug=state.profile().slug();
         // Finish an interrupted descriptor operation before selecting a new resume or reviewing.
         state=service.resumePendingDescriptor(slug).orElse(state);

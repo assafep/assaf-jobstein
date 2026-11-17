@@ -83,14 +83,18 @@ final class SandboxService {
         if(op.equals("onboard")){
             var failure=SandboxFailure.parse(simulateFailure);
             environments.create("sandbox");
-            var workflow=new OnboardingService(new ProvisioningStateRepository(new ConfigurationRepository(workspaceRoot.resolve("onboarding"))),out::println);
+            var provisioning=new ProvisioningStateRepository(new ConfigurationRepository(workspaceRoot.resolve("onboarding")));
+            OnboardingService.Action firstProfile=()->new FirstProfileOnboarding(provisioning,users()).run(
+                Optional.empty(),()->"Software Engineer",Optional.empty(),
+                ()->SyntheticResume.create(workspaceRoot.resolve("fixtures"),"software.engineer",1),()->true,descriptor->true);
+            var workflow=new OnboardingService(provisioning,out::println);
             workflow.run(new OnboardingService.Steps(
                 failure.wrap("google-configure",()->repository.save("mock-google-project",Map.of("projectId","jobstein-sandbox")),out::println),
                 failure.wrap("google-authorize",()->repository.save("mock-google-auth",Map.of("subject","synthetic-user")),out::println),
                 failure.wrap("ai-configure",this::initializeAi,out::println),
                 failure.wrap("user-initialize",()->users().initialize("Example Applicant"),out::println),
-                failure.wrap("first-profile",()->initializeProfile("Software Engineer",null),out::println)
-            ));
+                failure.wrap("first-profile",firstProfile,out::println)
+            ),firstProfile);
             out.println("Simulated GCP, OAuth, AI, Drive, user and first profile initialized");
             return execute("doctor",null,null,null,null,Map.of(),false,null,false,null,null,false);
         }

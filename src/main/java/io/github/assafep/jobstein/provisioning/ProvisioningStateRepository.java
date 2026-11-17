@@ -16,6 +16,21 @@ public final class ProvisioningStateRepository {
             steps = Map.copyOf(steps);
         }
     }
+    public record FirstProfile(String role,String slug,UUID id) {
+        public FirstProfile {
+            if(role==null||role.isBlank()||slug==null||!slug.equals(io.github.assafep.jobstein.storage.UserProfileService.slug(role)))
+                throw new IllegalArgumentException("Invalid first profile selection");
+            Objects.requireNonNull(id);
+        }
+    }
+    public Optional<FirstProfile> firstProfile()throws IOException {
+        return repository.load("onboarding-first-profile",FirstProfile.class);
+    }
+    public synchronized void selectFirstProfile(FirstProfile selection)throws IOException {
+        var existing=firstProfile();
+        if(existing.isPresent()&&!existing.get().equals(selection))throw new IOException("First profile selection is already bound");
+        if(existing.isEmpty())repository.save("onboarding-first-profile",selection);
+    }
 
     private final ConfigurationRepository repository;
     public ProvisioningStateRepository(ConfigurationRepository repository) {

@@ -51,6 +51,8 @@ bash scripts/smoke-test.sh
 
 Add the two `export` lines above to `~/.bashrc` to retain the Java configuration in new Ubuntu Bash terminals. `JAVA_HOME` must point to the Linux JDK directory, not its `bin` directory or a Windows JDK path. The version check should report Java 21 before running Gradle.
 
+When launching commands from PowerShell, select Ubuntu explicitly: `wsl -d Ubuntu -- bash -lc 'java -version'`. A bare `bash` or `wsl` may select Docker Desktop instead, which does not provide the development shell. Run builds in the Linux checkout and use the GitHub CLI installed and authenticated there; Windows and Ubuntu have separate PATHs. For example, `wsl -d Ubuntu -- bash -lc 'cd ~/projects/assaf-jobstein && ./gradlew --no-daemon test installDist && bash scripts/smoke-test.sh'`. Check the Linux checkout for existing changes before using it.
+
 The smoke test deliberately triggers errors and `FAIL` diagnostics to check failure recovery. A successful run ends with `PASS: all sandbox smoke checks completed` and exit code 0.
 
 The sandbox uses synthetic data and needs no credentials. Run subsequent development commands in Ubuntu. In IntelliJ IDEA, open the Linux checkout through WSL and select its JDK 21 for both the project SDK and Gradle JVM.

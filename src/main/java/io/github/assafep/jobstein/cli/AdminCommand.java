@@ -139,10 +139,10 @@ final class AdminCommand implements Callable<Integer> {
         out().println(service.descriptor(slug).toPrettyString());
         if(confirm("Approve descriptor and activate profile",approveDescriptor))service.activate(slug,true);
     }
-    private void createProfile()throws Exception{
+    private void createProfile(String selectedRole)throws Exception{
         var service=users();
         var workflow=new ProfileOnboarding(service);
-        workflow.run(ask("Target role",role,null),Optional.ofNullable(resume),this::selectedResume,
+        workflow.run(selectedRole,Optional.ofNullable(resume),this::selectedResume,
             ()->confirm("Allow configured AI provider to process resume contents",allowAi),
             descriptor->{out().println(descriptor.toPrettyString());return confirm("Approve descriptor and activate profile",approveDescriptor);});
     }
@@ -166,13 +166,18 @@ final class AdminCommand implements Callable<Integer> {
     }
     private int onboard()throws Exception{
         environments.create(env);
-        var workflow=new OnboardingService(new ProvisioningStateRepository(config),out()::println);
+        var provisioning=new ProvisioningStateRepository(config);
+        OnboardingService.Action firstProfile=()->new FirstProfileOnboarding(provisioning,users()).run(
+            Optional.ofNullable(role),()->ask("Target role",role,null),Optional.ofNullable(resume),this::selectedResume,
+            ()->confirm("Allow configured AI provider to process resume contents",allowAi),
+            descriptor->{out().println(descriptor.toPrettyString());return confirm("Approve descriptor and activate profile",approveDescriptor);});
+        var workflow=new OnboardingService(provisioning,out()::println);
         workflow.run(new OnboardingService.Steps(
             this::configureGoogle,this::authorize,
             ()->{if(ai().existing().isEmpty())configureAi(false,true);ai().validate();},
             ()->{var service=users();String existing=config.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).map(io.github.assafep.jobstein.domain.JobsteinUser::fullName).orElse(null);service.initialize(ask("Full name",name,existing));},
-            ()->{createProfile();if(users().profiles().entries().values().stream().noneMatch(p->p.profile().status()==io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE))throw new DiagnosticException(DiagnosticException.Code.APPROVAL_REQUIRED);}
-        ));
+            firstProfile
+        ),firstProfile);
         return doctor()?0:1;
     }
     public Integer call(){
@@ -214,7 +219,7 @@ final class AdminCommand implements Callable<Integer> {
                 case "user initialize":users().initialize(ask("Full name",name,null));break;
                 case "user show":out().println(users().user());break;
                 case "user validate":users().validateUser();break;
-                case "profile create":createProfile();break;
+                case "profile create":createProfile(ask("Target role",role,null));break;
                 case "profile list":users().profiles().entries().forEach((k,v)->out().println(k+" "+v.profile().status()));break;
                 case "profile show":out().println(users().get(selectedProfile()));break;
                 case "profile validate":users().descriptor(selectedProfile());break;

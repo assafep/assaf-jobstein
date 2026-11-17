@@ -23,4 +23,23 @@ class OnboardingServiceTest {
         assertEquals(List.of("google","oauth","ai","user","profile"),calls);
         assertTrue(state.completed("first-profile"));
     }
+
+    @Test void persistsFirstProfileSelectionAndRejectsReplacement()throws Exception{
+        var state=new ProvisioningStateRepository(new ConfigurationRepository(root));
+        var selected=new ProvisioningStateRepository.FirstProfile("Software Engineer","software.engineer",UUID.randomUUID());
+        state.selectFirstProfile(selected);
+        state.record("first-profile",ProvisioningStateRepository.Status.FAILED);
+        assertEquals(selected,new ProvisioningStateRepository(new ConfigurationRepository(root)).firstProfile().orElseThrow());
+        state.selectFirstProfile(selected);
+        assertThrows(IOException.class,()->state.selectFirstProfile(new ProvisioningStateRepository.FirstProfile("Product Manager","product.manager",UUID.randomUUID())));
+    }
+    @Test void completedFirstProfileIsValidatedWithoutRerunningProvisioning()throws Exception{
+        var repository=new ProvisioningStateRepository(new ConfigurationRepository(root));
+        var workflow=new OnboardingService(repository,message->{});
+        var steps=new OnboardingService.Steps(()->{},()->{},()->{},()->{},()->{});
+        workflow.run(steps);
+        var noWrites=new OnboardingService.Steps(()->fail(),()->fail(),()->fail(),()->fail(),()->fail());
+        assertThrows(IOException.class,()->workflow.run(noWrites,()->{throw new IOException("Selected profile is no longer ready");}));
+        assertTrue(repository.completed("first-profile"));
+    }
 }

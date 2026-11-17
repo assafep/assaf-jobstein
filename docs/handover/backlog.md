@@ -3,7 +3,6 @@
 This is an actionable queue, not a promise that all entries remain bugs. Verify against current code and Git history before making changes. Work through one bounded milestone at a time; fix failing CI first.
 
 ## P0 — Correctness and recoverability
-- Audit first-profile onboarding checkpoint: persist selected role/profile identity, validate that the intended profile (not merely any active profile) is ready before completing the step, and ensure retry does not ask for unrelated inputs. Cover interrupted provisioning and declined review in tests. Preserve existing environments.
 - Audit seed JSON and manifest identity: validate expected file ID, parent, MIME, editing/trash status and user ownership on reuse without overwriting mutable remote state. Detect missing local metadata and unsafe adoption; do not silently initialize a new user over an existing user root. Add fault tests.
 - Audit descriptor journal cleanup, explicit regeneration and activation across crash boundaries; protect pending state from accidental replacement, and distinguish recoverable completion from mismatched payloads.
 - Audit profile-index journal and explicit reconciliation for ownership validation, stale snapshots and lost write responses. Keep the single-writer guarantee explicit; do not claim distributed atomicity.
@@ -25,4 +24,6 @@ This is an actionable queue, not a promise that all entries remain bugs. Verify 
 Read devloop.md. Verify and improve the local runner prototype before enabling continuous writes. This is separate from product runtime. Coordinate single-writer cutover from existing ChatGPT automation. User requested local two-minute development cooldown and one-minute CI polling. Do not add DevLoop runtime dependencies to Jobstein.
 
 ## Completed baseline
+First-profile onboarding now persists role/slug/UUID before provisioning, revalidates completed checkpoints, and supports explicit legacy selection. Synthetic tests cover lost folder responses, declined review with another active profile, missing/replaced/deactivated profiles and legacy ambiguity. See status.md for verification evidence and architecture.md for repair guidance.
+
 See status.md and architecture.md for CI-verified administrative foundation, profile journal recovery, stored resume onboarding, OAuth/Drive HTTP tests and cross-process locking. Reopen only if a specific defect or requirement warrants it.

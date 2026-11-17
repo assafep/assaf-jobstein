@@ -105,10 +105,14 @@ public final class UserProfileService {
         io.github.assafep.jobstein.google.GoogleAccountBinding.verify(Optional.of(user().googleAccountSubject()),drive.userInfo().path("sub").asText(""));
     }
     public ProfileState create(String role)throws Exception{
+        return create(role,Optional.empty());
+    }
+    public ProfileState create(String role,Optional<UUID> expectedId)throws Exception{
         prepareProfileMutation();
         var owner=user();String slug=slug(role);if(slug.equals("shared"))throw new IllegalArgumentException("Reserved profile slug");
         var existing=profiles().entries().get(slug);
-        var state=existing==null?new ProfileState(new ApplicantProfile(UUID.randomUUID(),owner.id(),role,slug,ApplicantProfile.Status.INITIALIZING),List.of(),null):existing;
+        var state=existing==null?new ProfileState(new ApplicantProfile(expectedId.orElseGet(UUID::randomUUID),owner.id(),role,slug,ApplicantProfile.Status.INITIALIZING),List.of(),null):existing;
+        if(expectedId.isPresent()&&!expectedId.get().equals(state.profile().id()))throw new IOException("Selected profile identity changed");
         if(!state.profile().targetRole().equals(role))throw new IOException("Profile slug collision");
         String prefix="profile/"+slug;
         String home=folder(prefix,resource("user"),slug);

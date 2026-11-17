@@ -17,11 +17,17 @@ public final class OnboardingService {
         this.state=Objects.requireNonNull(state);this.progress=Objects.requireNonNull(progress);
     }
     public void run(Steps steps)throws Exception{
+        run(steps,()->{});
+    }
+    public void run(Steps steps,Action validateCompletedFirstProfile)throws Exception{
         step("google-configure",steps.googleConfigure());
         step("google-authorize",steps.googleAuthorize());
         step("ai-configure",steps.aiConfigure());
         step("user-initialize",steps.userInitialize());
-        step("first-profile",steps.firstProfile());
+        if(state.completed("first-profile")){
+            validateCompletedFirstProfile.run();
+            progress.accept("Previously completed: first-profile");
+        }else step("first-profile",steps.firstProfile());
     }
     private void step(String id,Action action)throws Exception{
         if(state.completed(id)){progress.accept("Previously completed: "+id);return;}
