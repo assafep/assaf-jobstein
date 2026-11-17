@@ -134,9 +134,18 @@ public final class UserProfileService {
     public record DescriptorIntent(String operationId,JsonNode payload){}
     public ProfileState generate(String slug,Path localResume)throws Exception{
         prepareProfileMutation();
+        return generateDocument(slug,ResumeDocument.read(localResume));
+    }
+    public ProfileState generateStored(String slug)throws Exception{
+        prepareProfileMutation();
         var state=get(slug);
         if(state.resumes().isEmpty())throw new IOException("Upload a resume first");
-        var document=ResumeDocument.read(localResume);
+        var latest=state.resumes().getLast();
+        return generateDocument(slug,ResumeDocument.readBytes(drive.readBytes(latest.id(),ResumeDocument.MAX_BYTES)));
+    }
+    private ProfileState generateDocument(String slug,ResumeDocument document)throws Exception{
+        var state=get(slug);
+        if(state.resumes().isEmpty())throw new IOException("Upload a resume first");
         String hash=document.sha256();
         if(!hash.equals(state.resumes().getLast().hash()))throw new DiagnosticException(DiagnosticException.Code.RESUME_MISMATCH);
         String journal="descriptor-"+state.profile().id();

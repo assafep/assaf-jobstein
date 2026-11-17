@@ -140,14 +140,11 @@ final class AdminCommand implements Callable<Integer> {
         if(confirm("Approve descriptor and activate profile",approveDescriptor))service.activate(slug,true);
     }
     private void createProfile()throws Exception{
-        var service=users();var state=service.create(ask("Target role",role,null));
-        String slug=state.profile().slug();Path file=selectedResume();
-        state=service.upload(slug,file);
-        if(state.descriptorId()==null)generate(slug,file);
-        else if(state.profile().status()!=io.github.assafep.jobstein.domain.ApplicantProfile.Status.ACTIVE){
-            out().println(service.descriptor(slug).toPrettyString());
-            if(confirm("Approve descriptor and activate profile",approveDescriptor))service.activate(slug,true);
-        }
+        var service=users();
+        var workflow=new ProfileOnboarding(service);
+        workflow.run(ask("Target role",role,null),Optional.ofNullable(resume),this::selectedResume,
+            ()->confirm("Allow configured AI provider to process resume contents",allowAi),
+            descriptor->{out().println(descriptor.toPrettyString());return confirm("Approve descriptor and activate profile",approveDescriptor);});
     }
     private boolean doctor()throws Exception{
         var doctor=new io.github.assafep.jobstein.validation.DoctorService();

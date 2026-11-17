@@ -30,13 +30,11 @@ final class SandboxService {
             new LocalWorkspaceStorage(workspaceRoot.resolve("drive")),aiService(),"sandbox");
     }
     private void initializeProfile(String role,Path supplied)throws Exception{
-        var service=users();var state=service.create(role);
-        if(supplied!=null){service.upload(state.profile().slug(),supplied);return;}
-        if(!state.resumes().isEmpty())return;
-        Path file=SyntheticResume.create(workspaceRoot.resolve("fixtures"),state.profile().slug(),1);
-        service.upload(state.profile().slug(),file);
-        service.generate(state.profile().slug(),file);
-        service.activate(state.profile().slug(),true);
+        var service=users();
+        if(supplied!=null){var state=service.create(role);service.upload(state.profile().slug(),supplied);return;}
+        new ProfileOnboarding(service).run(role,Optional.empty(),
+            ()->SyntheticResume.create(workspaceRoot.resolve("fixtures"),slug(role),1),
+            ()->true,descriptor->true);
     }
     private Path fixture(String profile,int version)throws IOException{
         return SyntheticResume.create(workspaceRoot.resolve("fixtures"),profile,version);
