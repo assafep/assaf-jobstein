@@ -19,6 +19,9 @@ class UploadRecoveryTest {
             public JsonNode userInfo(){return local.userInfo();}
             public JsonNode file(String id)throws Exception{return local.file(id);}
             public String ensureFolder(String p,String n,String m)throws Exception{return local.ensureFolder(p,n,m);}
+            public java.util.Optional<String> findFolder(String p,String n,String m)throws Exception{return local.findFolder(p,n,m);}
+            public String ensureFolderWithId(String p,String n,String m,String id)throws Exception{return local.ensureFolderWithId(p,n,m,id);}
+            public void validateFolder(String id,String p,String n,String m)throws Exception{local.validateFolder(id,p,n,m);}
             public String upload(String p,String n,String m,byte[] b)throws Exception{return local.upload(p,n,m,b);}
             public String allocateFileId(){return local.allocateFileId();}
             public String ensureUpload(String p,String n,String m,byte[] b,String id)throws Exception{

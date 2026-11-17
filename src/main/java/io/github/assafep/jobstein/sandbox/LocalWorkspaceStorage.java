@@ -40,14 +40,27 @@ public final class LocalWorkspaceStorage implements WorkspaceStorage {
         var result=JSON.createObjectNode().put("id",item.id()).put("name",item.name()).put("mimeType",item.mime()).put("trashed",false);
         result.putObject("capabilities").put("canEdit",true);
         if(item.parent()!=null)result.putArray("parents").add(item.parent());
+        result.putObject("appProperties").put("jobsteinId",item.marker());
         return result;
     }
-    @Override public synchronized String ensureFolder(String parent,String name,String marker)throws IOException{
+    @Override public synchronized Optional<String> findFolder(String parent,String name,String marker)throws IOException{
         parent(parent);
         var matches=index().resources().values().stream().filter(r->FOLDER.equals(r.mime())&&Objects.equals(parent,r.parent())&&Objects.equals(marker,r.marker())).toList();
         if(matches.size()>1)throw new IOException("Ambiguous simulated folder");
-        if(!matches.isEmpty())return matches.getFirst().id();
-        String id=UUID.randomUUID().toString();remember(new Resource(id,parent,name,FOLDER,marker));return id;
+        return matches.isEmpty()?Optional.empty():Optional.of(matches.getFirst().id());
+    }
+    @Override public synchronized String ensureFolder(String parent,String name,String marker)throws IOException{
+        var existing=findFolder(parent,name,marker);
+        return existing.isPresent()?existing.get():ensureFolderWithId(parent,name,marker,allocateFileId());
+    }
+    @Override public synchronized String ensureFolderWithId(String parent,String name,String marker,String id)throws IOException{
+        parent(parent);
+        if(index().resources().containsKey(id)){validateFolder(id,parent,name,marker);return id;}
+        remember(new Resource(id,parent,name,FOLDER,marker));return id;
+    }
+    @Override public synchronized void validateFolder(String id,String parent,String name,String marker)throws IOException{
+        var actual=resource(id);
+        if(!FOLDER.equals(actual.mime())||!Objects.equals(parent,actual.parent())||!name.equals(actual.name())||!marker.equals(actual.marker()))throw new IOException("Unexpected local folder metadata");
     }
     @Override public String allocateFileId(){return UUID.randomUUID().toString();}
     @Override public synchronized String upload(String parent,String name,String mime,byte[] data)throws IOException{
@@ -59,6 +72,7 @@ public final class LocalWorkspaceStorage implements WorkspaceStorage {
         if(existing!=null){
             if(!Objects.equals(parent,existing.parent())||!name.equals(existing.name())||!mime.equals(existing.mime()))
                 throw new IOException("Allocated ID conflicts with unexpected resource");
+            if(!Arrays.equals(data,Files.readAllBytes(content(id))))throw new IOException("Recovered local resource checksum mismatch");
             return id;
         }
         AtomicFiles.write(content(id),data);

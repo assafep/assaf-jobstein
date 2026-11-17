@@ -34,6 +34,8 @@ public final class ConfigurationRepository {
         return Optional.of(value);
     }
 
+    public void remove(String name)throws IOException{Files.deleteIfExists(path(name));}
+
     public <T> void save(String name, T configuration) throws IOException {
         java.util.Objects.requireNonNull(configuration);
         AtomicFiles.write(path(name), mapper.writeValueAsBytes(configuration));

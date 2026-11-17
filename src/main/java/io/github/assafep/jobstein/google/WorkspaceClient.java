@@ -34,6 +34,8 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
             if(existing.path("trashed").asBoolean()||!name.equals(existing.path("name").asText())||
                 !mime.equals(existing.path("mimeType").asText())||!existing.path("capabilities").path("canEdit").asBoolean()||
                 !java.util.stream.StreamSupport.stream(existing.path("parents").spliterator(),false).anyMatch(v->parent.equals(v.asText())))throw new IOException("Allocated Drive ID conflicts with unexpected resource");
+            if(!io.github.assafep.jobstein.storage.ResumeDocument.sha256(data).equalsIgnoreCase(existing.path("sha256Checksum").asText()))
+                throw new IOException("Recovered Drive resource checksum mismatch");
             return allocatedId;
         }
     }
@@ -44,18 +46,39 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         request("GET","https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=1",null,null);
         request("GET","https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=1",null,null);
     }
-    public JsonNode file(String fileId) throws Exception {return request("GET","https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?fields=id,name,mimeType,parents,trashed,capabilities(canEdit)",null,null);}
-    public String ensureFolder(String parent,String name,String marker) throws Exception {
+    public JsonNode file(String fileId) throws Exception {return request("GET","https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?fields=id,name,mimeType,parents,trashed,appProperties,sha256Checksum,capabilities(canEdit)",null,null);}
+    public Optional<String> findFolder(String parent,String name,String marker) throws Exception {
         String escaped=marker.replace("\\","\\\\").replace("'","\\'");
         String query="trashed = false and mimeType = 'application/vnd.google-apps.folder' and '"+(parent==null?"root":id(parent))+"' in parents and appProperties has { key='jobsteinId' and value='"+escaped+"' }";
         var found=request("GET","https://www.googleapis.com/drive/v3/files?q="+q(query)+"&fields=nextPageToken,files(id)&pageSize=100",null,null);
         var list=found.path("files");
         if(list.size()>1 || found.has("nextPageToken")) throw new IOException("Ambiguous Jobstein folder: "+name);
-        if(list.size()==1)return list.get(0).path("id").asText();
+        return list.size()==1?Optional.of(id(list.get(0).path("id").asText())):Optional.empty();
+    }
+    public String ensureFolder(String parent,String name,String marker)throws Exception{
+        var existing=findFolder(parent,name,marker);
+        return existing.isPresent()?existing.get():ensureFolderWithId(parent,name,marker,allocateFileId());
+    }
+    public String ensureFolderWithId(String parent,String name,String marker,String allocatedId)throws Exception{
         ObjectNode metadata=JSON.createObjectNode().put("name",name).put("mimeType","application/vnd.google-apps.folder");
         metadata.putArray("parents").add(parent==null?"root":parent);
         metadata.putObject("appProperties").put("jobsteinId",marker);
-        return request("POST","https://www.googleapis.com/drive/v3/files?fields=id",JSON.writeValueAsBytes(metadata),"application/json").path("id").asText();
+        metadata.put("id",id(allocatedId));
+        try{return request("POST","https://www.googleapis.com/drive/v3/files?fields=id",JSON.writeValueAsBytes(metadata),"application/json").path("id").asText();}
+        catch(WorkspaceHttpException e){
+            if(e.status!=409)throw e;
+            validateFolder(allocatedId,parent,name,marker);
+            return allocatedId;
+        }
+    }
+    public void validateFolder(String folderId,String parent,String name,String marker)throws Exception{
+        var actual=file(folderId);
+        String expectedParent=parent==null?file("root").path("id").asText():parent;
+        if(actual.path("trashed").asBoolean()||!actual.path("capabilities").path("canEdit").asBoolean()||
+            !"application/vnd.google-apps.folder".equals(actual.path("mimeType").asText())||
+            !name.equals(actual.path("name").asText())||!marker.equals(actual.path("appProperties").path("jobsteinId").asText())||
+            !java.util.stream.StreamSupport.stream(actual.path("parents").spliterator(),false).anyMatch(v->expectedParent.equals(v.asText())))
+            throw new IOException("Unexpected Drive folder metadata");
     }
     public String allocateFileId() throws Exception {
         return id(request("GET","https://www.googleapis.com/drive/v3/files/generateIds?count=1&space=drive",null,null).path("ids").path(0).asText());

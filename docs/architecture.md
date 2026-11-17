@@ -38,3 +38,6 @@ Keep secrets outside Git and Drive. OS credential store preferred; protected loc
 
 ## Status
 This document specifies target behavior, not implemented functionality. License and final packaging decisions remain open.
+
+## Provisioning recovery
+Folder and binary/JSON creation uses persisted allocated Drive IDs. Existing legacy folders may be adopted by their stable marker after metadata validation. Upload conflicts are accepted only with matching metadata and SHA-256 checksum. Descriptor generation journals the exact generated payload locally until its upload and profile index update complete; retry does not call AI again while that journal exists. A new explicit regeneration after completion produces a new descriptor. Finish any pending descriptor generation before replacing its resume. These protections assume a single local environment writer, and do not replace live integration testing or distributed locking.
