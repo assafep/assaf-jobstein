@@ -53,3 +53,6 @@ Administrative CLI errors and doctor probes use fixed diagnostic codes and recov
 
 ## Profile index reconciliation
 Use state status, state validate, state backup, and state reconcile --source local|remote [--apply]. Reconciliation defaults to dry run. Explicit application saves both index copies in an owner-only local backup, validates selected profile ownership and UUID uniqueness, rechecks the snapshot for changes, and updates only the other index. This is index-only recovery, not a full environment backup or restoration of underlying files. No automatic merging or distributed compare-and-swap is provided. Inspect both copies before selecting a source.
+
+## Credential backend selection
+The existing POSIX file backend remains the supported default. Backend selection is persisted per live environment in credential-store.yaml; existing configurations continue using files. An experimental Linux Secret Service adapter uses secret-tool with values on stdin/stdout, hashed environment namespaces, and no shell. It intentionally fails closed on ambiguous lookup failures. Because secret-tool may not distinguish an absent entry from a backend failure, native onboarding is not enabled yet. No automatic fallback after a native error, credential migration, macOS Keychain, or Windows Credential Manager is implemented.

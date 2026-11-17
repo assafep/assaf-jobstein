@@ -41,6 +41,7 @@ final class AdminCommand implements Callable<Integer> {
     @CommandLine.Option(names="--source",description="Reconciliation source: local or remote") String reconciliationSource;
     @CommandLine.Option(names="--apply",description="Apply reconciliation after preserving both copies") boolean applyReconciliation;
     private ConfigurationRepository config;
+    @CommandLine.Option(names="--credential-store",description="Credential backend: file or secret-service (fixed per environment)") String credentialStore;
     private SecretStore secrets;
     private EnvironmentService environments;
     private Path directory;
@@ -183,7 +184,7 @@ final class AdminCommand implements Callable<Integer> {
             directory=environments.directory(env);
             if(!operation.equals("onboard"))environments.validate(env);
             config=new ConfigurationRepository(directory);
-            secrets=new PosixFileSecretStore(directory.resolve("secrets"));
+            secrets=CredentialStores.open(directory,config,Optional.ofNullable(credentialStore));
             if(operation.startsWith("state "))return StateCommands.execute(operation,users().recovery(),reconciliationSource,applyReconciliation,out());
             switch(operation){
                 case "onboard":return onboard();
