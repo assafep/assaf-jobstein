@@ -18,6 +18,9 @@ public record ResumeDocument(byte[] bytes,String sha256,String text) {
     public static ResumeDocument read(Path path)throws IOException{
         byte[] bytes;
         try(var input=Files.newInputStream(path)){bytes=input.readNBytes(MAX_BYTES+1);}
+        return readBytes(bytes);
+    }
+    public static ResumeDocument readBytes(byte[] bytes)throws IOException{
         if(bytes.length>MAX_BYTES)throw new IOException("PDF exceeds 20 MB");
         try(var pdf=Loader.loadPDF(bytes)){
             String text=new PDFTextStripper().getText(pdf);

@@ -30,7 +30,8 @@ class UploadRecoveryTest {
                 return result;
             }
             public void updateJson(String id,JsonNode data)throws Exception{local.updateJson(id,data);}
-            public JsonNode readJson(String id)throws Exception{return local.readJson(id);}
+            public byte[] readBytes(String id,int limit)throws Exception{return local.readBytes(id,limit);}
+        public JsonNode readJson(String id)throws Exception{return local.readJson(id);}
         };
         // AI is not used by user initialization.
         var service=new UserProfileService(config,failing,null,"sandbox");

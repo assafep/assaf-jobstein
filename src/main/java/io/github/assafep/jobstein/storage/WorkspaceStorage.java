@@ -14,5 +14,6 @@ public interface WorkspaceStorage {
     String allocateFileId() throws Exception;
     String ensureUpload(String parent,String name,String mime,byte[] data,String allocatedId) throws Exception;
     void updateJson(String fileId, JsonNode data) throws Exception;
+    byte[] readBytes(String fileId,int limit)throws Exception;
     JsonNode readJson(String fileId) throws Exception;
 }

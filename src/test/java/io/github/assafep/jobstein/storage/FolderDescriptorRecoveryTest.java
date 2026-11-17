@@ -37,6 +37,7 @@ class FolderDescriptorRecoveryTest {
             return actual;
         }
         public void updateJson(String id,JsonNode data)throws Exception{delegate.updateJson(id,data);}
+        public byte[] readBytes(String id,int limit)throws Exception{return delegate.readBytes(id,limit);}
         public JsonNode readJson(String id)throws Exception{return delegate.readJson(id);}
     }
     @Test void recoversFolderAndDescriptorWithoutRegenerating()throws Exception{

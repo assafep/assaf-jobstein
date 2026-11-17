@@ -83,6 +83,15 @@ public final class LocalWorkspaceStorage implements WorkspaceStorage {
         if(!"application/json".equals(resource(fileId).mime()))throw new IOException("Not a JSON resource");
         AtomicFiles.write(content(fileId),JSON.writeValueAsBytes(data));
     }
+    @Override public synchronized byte[] readBytes(String id,int limit)throws IOException{
+        resource(id);
+        if(limit<1)throw new IllegalArgumentException("Invalid download limit");
+        try(var input=Files.newInputStream(content(id))){
+            byte[] bytes=input.readNBytes(limit+1);
+            if(bytes.length>limit)throw new IOException("Download exceeds size limit");
+            return bytes;
+        }
+    }
     @Override public synchronized JsonNode readJson(String fileId)throws IOException{
         if(!"application/json".equals(resource(fileId).mime()))throw new IOException("Not a JSON resource");
         return JSON.readTree(Files.readAllBytes(content(fileId)));

@@ -18,8 +18,10 @@ public final class MockAiExecution implements AiExecution {
             public JsonNode generateJson(AiIntegrationConfig selected,String instructions,String input)throws Exception{
                 if(!"mock-xai".equals(selected.provider()))throw new IllegalArgumentException("Only simulated provider permitted");
                 validate(selected);
-                var result=new ObjectMapper().createObjectNode().put("professionalSummary","Synthetic applicant descriptor").put("synthetic",true);
-                result.putArray("skills");result.putArray("employmentHistory");result.putArray("education");
+                var mapper=new ObjectMapper();
+                String excerpt=mapper.readTree(input).path("resume").asText().lines().filter(line->!line.isBlank()).findFirst().orElseThrow();
+                var result=mapper.createObjectNode().put("professionalSummary",excerpt).put("synthetic",true);
+                result.putArray("skills");result.putArray("skillEvidence");result.putArray("employmentHistory");result.putArray("education");
                 return result;
             }
         };

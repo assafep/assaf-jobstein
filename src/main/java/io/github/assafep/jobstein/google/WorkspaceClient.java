@@ -99,6 +99,18 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     public void updateJson(String fileId,JsonNode data) throws Exception {
         request("PATCH","https://www.googleapis.com/upload/drive/v3/files/"+id(fileId)+"?uploadType=media",JSON.writeValueAsBytes(data),"application/json");
     }
+    public byte[] readBytes(String fileId,int limit)throws Exception{
+        if(limit<1)throw new IllegalArgumentException("Invalid download limit");
+        var request=HttpRequest.newBuilder(URI.create("https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?alt=media"))
+            .timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+oauth.accessToken()).GET().build();
+        var response=http.send(request,HttpResponse.BodyHandlers.ofInputStream());
+        try(var input=response.body()){
+            if(response.statusCode()<200||response.statusCode()>=300)throw new WorkspaceHttpException(response.statusCode());
+            byte[] bytes=input.readNBytes(limit+1);
+            if(bytes.length>limit)throw new IOException("Download exceeds size limit");
+            return bytes;
+        }
+    }
     public JsonNode readJson(String fileId) throws Exception {return request("GET","https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?alt=media",null,null);}
     public JsonNode document(String documentId) throws Exception {return request("GET","https://docs.googleapis.com/v1/documents/"+id(documentId),null,null);}
     public JsonNode updateDocument(String documentId,JsonNode requests) throws Exception {return request("POST","https://docs.googleapis.com/v1/documents/"+id(documentId)+":batchUpdate",JSON.writeValueAsBytes(requests),"application/json");}
