@@ -42,6 +42,8 @@ final class AdminCommand implements Callable<Integer> {
     @CommandLine.Option(names="--apply",description="Apply reconciliation after preserving both copies") boolean applyReconciliation;
     private ConfigurationRepository config;
     @CommandLine.Option(names="--credential-store",description="Credential backend: file or secret-service (fixed per environment)") String credentialStore;
+    @CommandLine.Option(names="--oauth-callback-port",description="Fixed loopback callback port for private SSH forwarding; 0 selects a free port",defaultValue="0") int callbackPort;
+    @CommandLine.Option(names="--no-browser",description="Print authorization URL instead of opening a browser") boolean noBrowser;
     private SecretStore secrets;
     private EnvironmentService environments;
     private Path directory;
@@ -70,6 +72,7 @@ final class AdminCommand implements Callable<Integer> {
     private GoogleSettings google()throws IOException{return config.load("google",GoogleSettings.class).orElseThrow(()->new IOException("Google not configured"));}
     private void browser(String url){
         out().println("Open in browser: "+url);out().flush();
+        if(noBrowser)return;
         try{if(java.awt.Desktop.isDesktopSupported()&&java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE))java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));}catch(Exception ignored){}
     }
     private void configureGoogle()throws Exception{
@@ -89,7 +92,7 @@ final class AdminCommand implements Callable<Integer> {
     private void authorize()throws Exception{
         if(oauthClient!=null)oauth().importClient(oauthClient,google().projectId());
         var expected=config.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).map(io.github.assafep.jobstein.domain.JobsteinUser::googleAccountSubject);
-        oauth().authorize(this::browser,expected);
+        oauth().authorize(this::browser,expected,callbackPort);
         new WorkspaceClient(oauth()).validate();
     }
     private void configureAi(boolean update,boolean defaultBinding)throws Exception{
@@ -181,6 +184,8 @@ final class AdminCommand implements Callable<Integer> {
             if(simulateFailure!=null&&(!"sandbox".equals(env)||!operation.equals("onboard")))throw new IllegalArgumentException("Failure injection is only available for sandbox onboarding");
             try(var ignored=io.github.assafep.jobstein.environment.EnvironmentLock.acquire(environments.directory(env))){
             io.github.assafep.jobstein.security.PrivateState.directory(environments.directory(env));
+            if(callbackPort<0||callbackPort>65535)throw new IllegalArgumentException("Invalid callback port");
+            if((callbackPort!=0||noBrowser)&&(!Set.of("onboard","google authorize","google configure").contains(operation)||"sandbox".equals(env)))throw new IllegalArgumentException("OAuth options are only for live onboarding or Google configuration");
             if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor,simulateFailure,reconciliationSource,applyReconciliation);
             directory=environments.directory(env);
             if(!operation.equals("onboard"))environments.validate(env);

@@ -60,26 +60,24 @@ public final class GoogleOAuth {
         return value;
     }
     public void authorize(Consumer<String> display) throws Exception {authorize(display,Optional.empty());}
-    public synchronized void authorize(Consumer<String> display,Optional<String> expectedSubject) throws Exception {
+    public void authorize(Consumer<String> display,Optional<String> expectedSubject) throws Exception {authorize(display,expectedSubject,0);}
+    public synchronized void authorize(Consumer<String> display,Optional<String> expectedSubject,int callbackPort) throws Exception {
         var client=client(); String verifier=random(), state=random();
         String challenge=Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(StandardCharsets.US_ASCII)));
-        HttpServer server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
+        HttpServer server=HttpServer.create(LoopbackCallback.address(callbackPort),0);
         var result=new CompletableFuture<String>();
         String redirect="http://127.0.0.1:"+server.getAddress().getPort()+"/callback";
         server.createContext("/callback", exchange -> {
             int status=400; String message="Authorization was not accepted.";
             try {
-                var args=new HashMap<String,String>();
-                String query=exchange.getRequestURI().getRawQuery();
-                if(query!=null) for(String pair:query.split("&")) {
-                    String[] parts=pair.split("=",2);
-                    if(parts.length==2) args.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));
+                var callback=LoopbackCallback.parse(exchange.getRequestMethod(),exchange.getRequestURI(),state);
+                if(callback.isPresent()){
+                    var received=callback.get();
+                    if(received.denied())result.completeExceptionally(new IOException("Google authorization denied"));
+                    else if(result.complete(received.code())){status=200;message="Authorization received. Return to Jobstein.";}
                 }
-                if(state.equals(args.get("state"))) {
-                    if(args.containsKey("code") && !args.get("code").isBlank()) {
-                        result.complete(args.get("code")); status=200; message="Authorization received. Return to Jobstein.";
-                    } else if(args.containsKey("error")) result.completeExceptionally(new IOException("Google authorization denied"));
-                }
+                exchange.getResponseHeaders().set("Cache-Control","no-store");
+                exchange.getResponseHeaders().set("Referrer-Policy","no-referrer");
                 byte[] bytes=message.getBytes(StandardCharsets.UTF_8);
                 exchange.getResponseHeaders().set("Content-Type","text/plain; charset=utf-8");
                 exchange.sendResponseHeaders(status,bytes.length);
