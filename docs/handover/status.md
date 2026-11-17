@@ -47,3 +47,9 @@ The POSIX file credential backend now checks each ancestor above the secret root
 
 Java 21 compilation of the changed production classes and a standalone synthetic check passed. `./gradlew --offline --no-daemon test installDist` was blocked by the read-only Gradle wrapper cache lock; the runner must rebuild and execute JUnit. No network or live credentials were used. Publication and new CI remain runner-owned.
 `bash scripts/smoke-test.sh` passed against the pre-existing distribution; it does not validate this patch. `git diff --check` passed. All edits are left unstaged for runner review and validation.
+
+## Native credential result cleanup (runner validation pending)
+The experimental Secret Service adapter now clears returned command-output buffers after lookup, store and clear, including nonzero exits and malformed encoding. Lookup decodes from a temporary byte buffer instead of constructing an immutable credential String, and clears that buffer afterward. Synthetic JUnit coverage checks cleanup, safe errors and preservation of caller-owned input. Native onboarding remains disabled: ambiguous missing-entry semantics are unchanged. This is best-effort buffer hygiene, not a guarantee of JVM memory erasure or subprocess cleanup on every transport failure.
+
+Java 21 compilation and a standalone synthetic cleanup exercise passed. `./gradlew --offline --no-daemon test installDist` could not start because the Gradle wrapper cache lock is read-only; the runner must rebuild and run JUnit. No network, real credentials or live native service were used. Edits remain unstaged; publication and new CI are runner-owned.
+`bash scripts/smoke-test.sh` passed against the pre-existing distribution; it does not validate this patch. `git diff --check` passed.

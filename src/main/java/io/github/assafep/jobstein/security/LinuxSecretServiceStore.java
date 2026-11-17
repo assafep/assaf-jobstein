@@ -41,7 +41,7 @@ public final class LinuxSecretServiceStore implements SecretStore {
         Objects.requireNonNull(value);
         byte[] encoded=Base64.getEncoder().encode(value);
         try{
-            if(execute("store",reference,encoded).exit()!=0)throw new IOException("Native credential store write failed");
+            requireSuccess("store",reference,encoded,"Native credential store write failed");
             var stored=get(reference).orElseThrow(()->new IOException("Native credential write not verified"));
             try{if(!Arrays.equals(value,stored))throw new IOException("Native credential write not verified");}
             finally{Arrays.fill(stored,(byte)0);}
@@ -49,15 +49,31 @@ public final class LinuxSecretServiceStore implements SecretStore {
     }
     @Override public Optional<byte[]> get(String reference)throws IOException{
         var result=execute("lookup",reference,new byte[0]);
-        // secret-tool uses exit 1 both for no match and some backend errors.
-        // Fail closed instead of treating an unavailable keyring as an empty store.
-        if(result.exit()!=0)throw new IOException("Native credential lookup failed or entry is missing");
-        try{return Optional.of(Base64.getDecoder().decode(new String(result.output(),StandardCharsets.US_ASCII).strip()));}
-        catch(IllegalArgumentException e){throw new IOException("Invalid native credential encoding");}
-        finally{Arrays.fill(result.output(),(byte)0);}
+        try {
+            // secret-tool uses exit 1 both for no match and some backend errors.
+            // Fail closed instead of treating an unavailable keyring as an empty store.
+            if(result.exit()!=0)throw new IOException("Native credential lookup failed or entry is missing");
+            // Trim the command's ASCII whitespace without creating an immutable secret String.
+            byte[] output=result.output();
+            int start=0,end=output.length;
+            while(start<end && isAsciiWhitespace(output[start]))start++;
+            while(end>start && isAsciiWhitespace(output[end-1]))end--;
+            byte[] encoded=Arrays.copyOfRange(output,start,end);
+            try{return Optional.of(Base64.getDecoder().decode(encoded));}
+            catch(IllegalArgumentException e){throw new IOException("Invalid native credential encoding");}
+            finally{Arrays.fill(encoded,(byte)0);}
+        }finally{Arrays.fill(result.output(),(byte)0);}
+    }
+    private static boolean isAsciiWhitespace(byte value){
+        return value==' ' || (value>='\t' && value<='\r');
     }
     @Override public void remove(String reference)throws IOException{
-        if(execute("clear",reference,new byte[0]).exit()!=0)throw new IOException("Native credential removal failed");
+        requireSuccess("clear",reference,new byte[0],"Native credential removal failed");
+    }
+    private void requireSuccess(String operation,String reference,byte[] input,String message)throws IOException{
+        var result=execute(operation,reference,input);
+        try{if(result.exit()!=0)throw new IOException(message);}
+        finally{Arrays.fill(result.output(),(byte)0);}
     }
     private static Result run(List<String> arguments,byte[] input)throws IOException{
         var command=new ArrayList<String>();command.add("secret-tool");command.addAll(arguments);
