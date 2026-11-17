@@ -17,3 +17,6 @@ jobs:
       - run: ./gradlew --no-daemon test installDist
 
       - run: bash scripts/smoke-test.sh
+
+      - run: bash -n scripts/setup-live-tools.sh scripts/live-preflight.sh scripts/live-smoke-test.sh scripts/test-live-guards.sh
+      - run: bash scripts/test-live-guards.sh

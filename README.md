@@ -16,6 +16,10 @@ jobstein profile list --env sandbox
 
 See [sandbox instructions](docs/sandbox.md). The simulated environment does not contact external services.
 
+## Live development testing (explicit opt-in)
+
+See [live development instructions](docs/live-development.md) for Google Cloud CLI installation, dedicated test project authorization and the guarded live validation script. The regular sandbox and CI remain credential-free.
+
 ## Development status
 
 Administrative CLI and live Google/xAI adapters are implemented but live end-to-end authorization and provisioning remain unverified. Operational job search is deferred.
