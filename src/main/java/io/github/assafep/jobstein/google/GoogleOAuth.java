@@ -24,10 +24,12 @@ public final class GoogleOAuth {
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
     private final AccessTokenCache tokens=new AccessTokenCache(java.time.Clock.systemUTC(),Duration.ofSeconds(60));
     private final URI tokenEndpoint;
-    public GoogleOAuth(SecretStore secrets) { this.secrets = secrets; this.tokenEndpoint=URI.create("https://oauth2.googleapis.com/token"); }
+    private final URI identityEndpoint;
+    public GoogleOAuth(SecretStore secrets) { this.secrets = secrets; this.tokenEndpoint=URI.create("https://oauth2.googleapis.com/token"); this.identityEndpoint=URI.create("https://openidconnect.googleapis.com/v1/userinfo"); }
     GoogleOAuth(SecretStore secrets,URI testOrigin){
         this.secrets=secrets;
         this.tokenEndpoint=io.github.assafep.jobstein.testing.LoopbackOrigin.validate(testOrigin).resolve("/token");
+        this.identityEndpoint=testOrigin.resolve("/v1/userinfo");
     }
     public synchronized void importClient(Path path, String expectedProject) throws IOException {
         JsonNode client = JSON.readTree(path.toFile()).path("installed");
@@ -108,7 +110,7 @@ public final class GoogleOAuth {
         } finally { server.stop(0); }
     }
     private JsonNode identity(String accessToken)throws IOException,InterruptedException{
-        var response=http.send(HttpRequest.newBuilder(URI.create("https://openidconnect.googleapis.com/v1/userinfo"))
+        var response=http.send(HttpRequest.newBuilder(identityEndpoint)
             .timeout(Duration.ofSeconds(40)).header("Authorization","Bearer "+accessToken).GET().build(),HttpResponse.BodyHandlers.ofString());
         if(response.statusCode()!=200)throw new IOException("Google identity verification failed");
         return JSON.readTree(response.body());

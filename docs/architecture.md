@@ -62,3 +62,5 @@ A single GoogleOAuth instance is shared within each live administrative CLI invo
 
 ## HTTP adapter tests
 JUnit tests use local HTTP servers and synthetic credentials to verify token refresh, read-only 401 retry, no mutation replay, Drive upload conflict checksum matching and xAI JSON/error handling. Package-private test constructors accept only explicit IPv4 loopback origins; public constructors retain fixed provider endpoints. These tests do not establish live provider compatibility.
+
+The loopback HTTP suite also exercises the real authorization callback, PKCE challenge/verifier correspondence, rejected state, account mismatch without refresh-token replacement, successful reauthorization, bounded binary downloads and exhausted authentication retries. Identity endpoint substitution is restricted to the same explicit test origin as the token endpoint.

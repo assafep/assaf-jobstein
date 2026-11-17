@@ -64,4 +64,25 @@ class WorkspaceHttpIT {
             assertEquals(2,writes.get());
         }
     }
+    @Test void boundedDownloadsAndRetryExhaustion()throws Exception{
+        var refreshes=new AtomicInteger();var reads=new AtomicInteger();
+        try(var server=new MockHttp(exchange->{
+            String path=exchange.getRequestURI().getPath();
+            if(path.equals("/token")){
+                refreshes.incrementAndGet();
+                MockHttp.reply(exchange,200,"{\"access_token\":\"token-"+refreshes.get()+"\",\"expires_in\":3600}");
+            }else if(path.endsWith("/denied")){
+                reads.incrementAndGet();MockHttp.reply(exchange,401,"{}");
+            }else{
+                MockHttp.reply(exchange,200,"123456");
+            }
+        })){
+            var client=new WorkspaceClient(oauth(server),server.origin());
+            assertArrayEquals("123456".getBytes(StandardCharsets.UTF_8),client.readBytes("fixture",6));
+            assertThrows(IOException.class,()->client.readBytes("fixture",5));
+            assertThrows(WorkspaceClient.WorkspaceHttpException.class,()->client.readBytes("denied",10));
+            assertEquals(2,reads.get());
+            assertEquals(2,refreshes.get());
+        }
+    }
 }
