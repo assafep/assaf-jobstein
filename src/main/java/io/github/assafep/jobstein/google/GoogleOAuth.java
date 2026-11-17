@@ -23,7 +23,12 @@ public final class GoogleOAuth {
     private final SecretStore secrets;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
     private final AccessTokenCache tokens=new AccessTokenCache(java.time.Clock.systemUTC(),Duration.ofSeconds(60));
-    public GoogleOAuth(SecretStore secrets) { this.secrets = secrets; }
+    private final URI tokenEndpoint;
+    public GoogleOAuth(SecretStore secrets) { this.secrets = secrets; this.tokenEndpoint=URI.create("https://oauth2.googleapis.com/token"); }
+    GoogleOAuth(SecretStore secrets,URI testOrigin){
+        this.secrets=secrets;
+        this.tokenEndpoint=io.github.assafep.jobstein.testing.LoopbackOrigin.validate(testOrigin).resolve("/token");
+    }
     public synchronized void importClient(Path path, String expectedProject) throws IOException {
         JsonNode client = JSON.readTree(path.toFile()).path("installed");
         if (!client.path("client_id").isTextual() || !client.path("client_secret").isTextual()
@@ -48,7 +53,7 @@ public final class GoogleOAuth {
         return pairs.entrySet().stream().map(e -> URLEncoder.encode(e.getKey(),StandardCharsets.UTF_8)+"="+URLEncoder.encode(e.getValue(),StandardCharsets.UTF_8)).collect(java.util.stream.Collectors.joining("&"));
     }
     private JsonNode exchange(Map<String,String> fields) throws IOException, InterruptedException {
-        var response = http.send(HttpRequest.newBuilder(URI.create("https://oauth2.googleapis.com/token"))
+        var response = http.send(HttpRequest.newBuilder(tokenEndpoint)
             .timeout(Duration.ofSeconds(40)).header("Content-Type","application/x-www-form-urlencoded")
             .POST(HttpRequest.BodyPublishers.ofString(form(fields))).build(),HttpResponse.BodyHandlers.ofString());
         if(response.statusCode()!=200) throw new IOException("Google token endpoint rejected request (HTTP "+response.statusCode()+")");

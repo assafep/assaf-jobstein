@@ -59,3 +59,6 @@ The existing POSIX file backend remains the supported default. Backend selection
 
 ## OAuth access token lifecycle
 A single GoogleOAuth instance is shared within each live administrative CLI invocation. Access tokens are cached in memory using the returned expires_in lifetime, refreshed ahead of expiration (normally 60 seconds), and invalidated on credential replacement or HTTP 401. Read-only HTTP GET requests, including bounded PDF downloads, retry once after 401. Mutating requests are not automatically repeated; provisioning journals remain responsible for safe retries. Concurrent callers share a synchronized refresh. No access token is persisted. Cross-process reuse and live endpoint testing remain outside this change.
+
+## HTTP adapter tests
+JUnit tests use local HTTP servers and synthetic credentials to verify token refresh, read-only 401 retry, no mutation replay, Drive upload conflict checksum matching and xAI JSON/error handling. Package-private test constructors accept only explicit IPv4 loopback origins; public constructors retain fixed provider endpoints. These tests do not establish live provider compatibility.

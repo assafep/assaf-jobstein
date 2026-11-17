@@ -12,13 +12,19 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     private static final ObjectMapper JSON=new ObjectMapper();
     private final GoogleOAuth oauth;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
-    public WorkspaceClient(GoogleOAuth oauth) { this.oauth=oauth; }
+    private final Optional<URI> testOrigin;
+    public WorkspaceClient(GoogleOAuth oauth) { this.oauth=oauth; this.testOrigin=Optional.empty(); }
+    WorkspaceClient(GoogleOAuth oauth,URI testOrigin){this.oauth=oauth;this.testOrigin=Optional.of(io.github.assafep.jobstein.testing.LoopbackOrigin.validate(testOrigin));}
+    private URI endpoint(String url){
+        URI original=URI.create(url);
+        return testOrigin.map(origin->origin.resolve(original.getRawPath()+(original.getRawQuery()==null?"":"?"+original.getRawQuery()))).orElse(original);
+    }
     private JsonNode request(String method,String url,byte[] body,String type) throws IOException,InterruptedException {
         return request(method,url,body,type,true);
     }
     private JsonNode request(String method,String url,byte[] body,String type,boolean retryRead)throws IOException,InterruptedException{
         String token=oauth.accessToken();
-        var builder=HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+token);
+        var builder=HttpRequest.newBuilder(endpoint(url)).timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+token);
         if(body!=null) builder.header("Content-Type",type);
         var response=http.send(builder.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofByteArray(body)).build(),HttpResponse.BodyHandlers.ofString());
         if(response.statusCode()==401){
@@ -114,7 +120,7 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     private byte[] readBytes(String fileId,int limit,boolean retry)throws Exception{
         if(limit<1||limit==Integer.MAX_VALUE)throw new IllegalArgumentException("Invalid download limit");
         String token=oauth.accessToken();
-        var request=HttpRequest.newBuilder(URI.create("https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?alt=media"))
+        var request=HttpRequest.newBuilder(endpoint("https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?alt=media"))
             .timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+token).GET().build();
         var response=http.send(request,HttpResponse.BodyHandlers.ofInputStream());
         if(response.statusCode()==401){
