@@ -38,6 +38,7 @@ public final class ConfigurationRepository {
 
     public <T> void save(String name, T configuration) throws IOException {
         java.util.Objects.requireNonNull(configuration);
-        AtomicFiles.write(path(name), mapper.writeValueAsBytes(configuration));
+        io.github.assafep.jobstein.security.PrivateState.directory(directory);
+        AtomicFiles.write(path(name), mapper.writeValueAsBytes(configuration),io.github.assafep.jobstein.security.PrivateState.filePermissions());
     }
 }

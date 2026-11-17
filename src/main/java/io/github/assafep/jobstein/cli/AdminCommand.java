@@ -82,7 +82,8 @@ final class AdminCommand implements Callable<Integer> {
     }
     private void authorize()throws Exception{
         if(oauthClient!=null)oauth().importClient(oauthClient,google().projectId());
-        oauth().authorize(this::browser);
+        var expected=config.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).map(io.github.assafep.jobstein.domain.JobsteinUser::googleAccountSubject);
+        oauth().authorize(this::browser,expected);
         new WorkspaceClient(oauth()).validate();
     }
     private void configureAi(boolean update,boolean defaultBinding)throws Exception{
@@ -173,6 +174,7 @@ final class AdminCommand implements Callable<Integer> {
             environments=new EnvironmentService(Path.of(System.getProperty("user.home"),".config","jobstein","environments"));
             if(simulateFailure!=null&&(!"sandbox".equals(env)||!operation.equals("onboard")))throw new IllegalArgumentException("Failure injection is only available for sandbox onboarding");
             try(var ignored=io.github.assafep.jobstein.environment.EnvironmentLock.acquire(environments.directory(env))){
+            io.github.assafep.jobstein.security.PrivateState.directory(environments.directory(env));
             if("sandbox".equals(env))return new SandboxService(environments,out()).execute(operation,role,profile,agent,integration,fields,makeDefault,resume,approveDescriptor,simulateFailure);
             directory=environments.directory(env);
             if(!operation.equals("onboard"))environments.validate(env);

@@ -57,7 +57,8 @@ public final class GoogleOAuth {
         if(value.isBlank()) throw new IOException("Missing OAuth response field: "+key);
         return value;
     }
-    public void authorize(Consumer<String> display) throws Exception {
+    public void authorize(Consumer<String> display) throws Exception {authorize(display,Optional.empty());}
+    public void authorize(Consumer<String> display,Optional<String> expectedSubject) throws Exception {
         var client=client(); String verifier=random(), state=random();
         String challenge=Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(StandardCharsets.US_ASCII)));
         HttpServer server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
@@ -95,8 +96,16 @@ public final class GoogleOAuth {
             Set<String> granted=Set.copyOf(Arrays.asList(required(token,"scope").split(" ")));
             var requiredScopes=Arrays.stream(SCOPES.split(" ")).filter(s->s.startsWith("https://") && !s.endsWith("userinfo.email")).toList();
             if(!granted.containsAll(requiredScopes)) throw new IOException("Required Google permissions were not granted");
+            var identity=identity(required(token,"access_token"));
+            GoogleAccountBinding.verify(expectedSubject,identity.path("sub").asText(""));
             secrets.put(REFRESH,required(token,"refresh_token").getBytes(StandardCharsets.UTF_8));
         } finally { server.stop(0); }
+    }
+    private JsonNode identity(String accessToken)throws IOException,InterruptedException{
+        var response=http.send(HttpRequest.newBuilder(URI.create("https://openidconnect.googleapis.com/v1/userinfo"))
+            .timeout(Duration.ofSeconds(40)).header("Authorization","Bearer "+accessToken).GET().build(),HttpResponse.BodyHandlers.ofString());
+        if(response.statusCode()!=200)throw new IOException("Google identity verification failed");
+        return JSON.readTree(response.body());
     }
     public String accessToken() throws IOException, InterruptedException {
         var client=client();

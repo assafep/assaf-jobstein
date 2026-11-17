@@ -101,7 +101,11 @@ public final class UserProfileService {
     public ProfileState get(String slug)throws IOException{
         var value=profiles().entries().get(slug);if(value==null)throw new IOException("Unknown profile: "+slug);return value;
     }
+    private void verifyAccount()throws Exception{
+        io.github.assafep.jobstein.google.GoogleAccountBinding.verify(Optional.of(user().googleAccountSubject()),drive.userInfo().path("sub").asText(""));
+    }
     public ProfileState create(String role)throws Exception{
+        verifyAccount();
         var owner=user();String slug=slug(role);if(slug.equals("shared"))throw new IllegalArgumentException("Reserved profile slug");
         var existing=profiles().entries().get(slug);
         var state=existing==null?new ProfileState(new ApplicantProfile(UUID.randomUUID(),owner.id(),role,slug,ApplicantProfile.Status.INITIALIZING),List.of(),null):existing;
@@ -116,6 +120,7 @@ public final class UserProfileService {
         saveProfile(state);return state;
     }
     public ProfileState upload(String slug,Path path)throws Exception{
+        verifyAccount();
         var state=get(slug);var document=ResumeDocument.read(path);byte[] bytes=document.bytes();
         String hash=document.sha256();
         if(!state.resumes().isEmpty()&&state.resumes().getLast().hash().equals(hash)){saveProfiles(profiles());return state;}
@@ -128,6 +133,7 @@ public final class UserProfileService {
     private static ApplicantProfile withStatus(ApplicantProfile p,ApplicantProfile.Status status){return new ApplicantProfile(p.id(),p.userId(),p.targetRole(),p.slug(),status);}
     public record DescriptorIntent(String operationId,JsonNode payload){}
     public ProfileState generate(String slug,Path localResume)throws Exception{
+        verifyAccount();
         var state=get(slug);
         if(state.resumes().isEmpty())throw new IOException("Upload a resume first");
         var document=ResumeDocument.read(localResume);
@@ -159,6 +165,7 @@ public final class UserProfileService {
         return updated;
     }
     public JsonNode descriptor(String slug)throws Exception{
+        verifyAccount();
         var state=get(slug);if(state.descriptorId()==null)throw new IOException("Descriptor missing");
         var data=drive.readJson(state.descriptorId());
         if(state.resumes().isEmpty())throw new IOException("Resume missing");
@@ -170,21 +177,25 @@ public final class UserProfileService {
         return data;
     }
     public void activate(String slug,boolean active)throws Exception{
+        verifyAccount();
         var state=get(slug);if(active)descriptor(slug);
         saveProfile(new ProfileState(withStatus(state.profile(),active?ApplicantProfile.Status.ACTIVE:ApplicantProfile.Status.INACTIVE),state.resumes(),state.descriptorId()));
     }
     public ApplicationRegistry applicationRegistry() {
         return new ApplicationRegistry(new ApplicationRegistry.Store(){
             public ObjectNode read()throws Exception {
+                verifyAccount();
                 var node=drive.readJson(resource("user/registry"));
                 if(!(node instanceof ObjectNode object))throw new IOException("Invalid application registry");
                 return object;
             }
-            public void write(ObjectNode state)throws Exception {drive.updateJson(resource("user/registry"),state);}
+            public void write(ObjectNode state)throws Exception {verifyAccount();drive.updateJson(resource("user/registry"),state);}
         });
     }
     public void validateUser()throws Exception{
-        if(!user().googleAccountSubject().equals(drive.userInfo().path("sub").asText()))throw new IOException("Google account mismatch");
-        drive.readJson(resource("user/registry"));drive.readJson(resource("user/profiles-index"));
+        verifyAccount();
+        drive.readJson(resource("user/registry"));
+        var remote=drive.readJson(resource("user/profiles-index"));
+        if(!JSON.valueToTree(profiles()).equals(remote))throw new IOException("Local and remote profile indexes differ");
     }
 }

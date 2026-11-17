@@ -13,7 +13,7 @@ public final class EnvironmentLock implements AutoCloseable {
     private final FileLock lock;
     private EnvironmentLock(FileChannel channel,FileLock lock){this.channel=channel;this.lock=lock;}
     public static EnvironmentLock acquire(Path directory)throws IOException{
-        Files.createDirectories(directory);
+        io.github.assafep.jobstein.security.PrivateState.directory(directory);
         Path path=directory.resolve(".execution.lock");
         var channel=FileChannel.open(path,StandardOpenOption.CREATE,StandardOpenOption.WRITE,LinkOption.NOFOLLOW_LINKS);
         try{
