@@ -81,6 +81,8 @@ To package and verify the portable distributions, run `bash scripts/verify-distr
 
 See [architecture](docs/architecture.md). Never commit credentials, resumes or personal application data.
 
+Release/version policy and the intentionally undecided license are documented in [release policy](docs/release-policy.md). The current project is an unreleased `0.1.0-SNAPSHOT`; do not publish artifacts until the owner approves licensing and release terms.
+
 ## Continue development with Codex
 
 Start Codex from the root of a dedicated clone and say `keep going`. [AGENTS.md](AGENTS.md) defines the CI-gated development workflow and [the handover](docs/handover/README.md) contains requirements, implementation status, prioritized backlog and the local DevLoop migration plan. No prior ChatGPT transcript is required. Coordinate with any active remote development automation before enabling unattended local publication.

@@ -107,3 +107,6 @@ Doctor now validates the local onboarding checkpoint journal before provider pro
 ## Configuration permission audit (2026-11-18; local validation pending publication CI)
 Configuration doctor probes now audit the environment directory and existing YAML files for real-path, current-user ownership and owner-only POSIX permissions. Unsafe legacy files fail closed with a fixed repair diagnostic and remain unchanged; no implicit migration or permission rewrite was added. Synthetic coverage verifies a permissive legacy file is reported without modification. An explicit reviewed migration workflow remains open, and POSIX access control is not encryption.
 New environment directories are created owner-only so a fresh environment does not fail its first read-only audit.
+
+## Release/version policy (2026-11-18; documentation only)
+Added `docs/release-policy.md` and a README link. The project remains `0.1.0-SNAPSHOT`; release gates require Java 21 tests, install/smoke/distribution verification, an exact CI-green commit and checksums. No license was selected, no release was published, and the owner must decide licensing and release terms. Persisted-state migrations remain explicit and fail closed rather than implicit.
