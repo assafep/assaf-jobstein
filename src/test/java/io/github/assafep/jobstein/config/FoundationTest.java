@@ -24,9 +24,9 @@ class FoundationTest {
 
     @Test void checkpointsSurviveRepositoryRecreation() throws Exception {
         var state = new ProvisioningStateRepository(new ConfigurationRepository(root));
-        state.record("google", ProvisioningStateRepository.Status.COMPLETED);
+        state.record("google-configure", ProvisioningStateRepository.Status.COMPLETED);
         var reopened = new ProvisioningStateRepository(new ConfigurationRepository(root));
-        assertTrue(reopened.completed("google"));
+        assertTrue(reopened.completed("google-configure"));
         assertFalse(reopened.completed("ai"));
     }
 

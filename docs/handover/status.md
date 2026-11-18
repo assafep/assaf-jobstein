@@ -100,3 +100,6 @@ Gradle archive tasks now normalize file ordering and timestamps for reproducible
 
 ## Live validation evidence checklist (2026-11-18; documentation only)
 Added a manual, opt-in development validation checklist with explicit disposable-account/project preconditions, read-validation-only scope, cleanup steps, and a redacted evidence template. It does not claim live verification and does not authorize production operations, mail, applications, or unattended cloud provisioning. No live credentials or external accounts were accessed.
+
+## Doctor and onboarding checkpoint validation (2026-11-18; local validation pending publication CI)
+Doctor now validates the local onboarding checkpoint journal before provider probes. Validation is read-only and rejects unsupported checkpoint IDs, malformed state, and completed first-profile checkpoints without a persisted selection. A fixed diagnostic explains how to preserve and repair the affected local state; no checkpoint or remote Workspace resource is rewritten by doctor. README, sandbox instructions and architecture documentation describe the behavior. Targeted Java 21 tests passed; full suite, distribution build and sandbox smoke test remain required before publication.

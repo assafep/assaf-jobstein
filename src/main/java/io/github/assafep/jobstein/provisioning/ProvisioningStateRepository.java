@@ -1,11 +1,14 @@
 package io.github.assafep.jobstein.provisioning;
 
 import io.github.assafep.jobstein.config.ConfigurationRepository;
+import io.github.assafep.jobstein.validation.DiagnosticException;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 
 public final class ProvisioningStateRepository {
+    private static final Set<String> CHECKPOINTS = Set.of(
+        "google-configure", "google-authorize", "ai-configure", "user-initialize", "first-profile");
     public enum Status { IN_PROGRESS, COMPLETED, FAILED }
     public record Checkpoint(Status status, String updatedAt) {
         public Checkpoint { Objects.requireNonNull(status); Instant.parse(updatedAt); }
@@ -38,6 +41,26 @@ public final class ProvisioningStateRepository {
     }
     public State load() throws IOException {
         return repository.load("provisioning-state", State.class).orElseGet(() -> new State(1, Map.of()));
+    }
+
+    /** Validates local onboarding metadata without contacting or mutating remote services. */
+    public void validate() throws IOException {
+        final State current;
+        final Optional<FirstProfile> selected;
+        try {
+            current = load();
+            selected = firstProfile();
+        } catch (RuntimeException invalid) {
+            throw new DiagnosticException(DiagnosticException.Code.ONBOARDING_CHECKPOINT_INVALID, invalid);
+        }
+        if (current.steps().keySet().stream().anyMatch(id -> !CHECKPOINTS.contains(id))) {
+            throw new DiagnosticException(DiagnosticException.Code.ONBOARDING_CHECKPOINT_INVALID);
+        }
+        boolean firstProfileCompleted = Optional.ofNullable(current.steps().get("first-profile"))
+            .map(Checkpoint::status).filter(Status.COMPLETED::equals).isPresent();
+        if (firstProfileCompleted && selected.isEmpty()) {
+            throw new DiagnosticException(DiagnosticException.Code.ONBOARDING_CHECKPOINT_INVALID);
+        }
     }
     public synchronized void record(String stepId, Status status) throws IOException {
         if (stepId == null || !stepId.matches("[a-z][a-z0-9-]{0,63}"))

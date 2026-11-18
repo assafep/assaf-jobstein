@@ -46,7 +46,7 @@ jobstein doctor --env sandbox
 jobstein onboard --env sandbox
 ```
 
-The first invocation fails before executing the specified checkpoint. Doctor reports incomplete provisioning. The final invocation resumes from the failed checkpoint. Supported checkpoints: google-configure, google-authorize, ai-configure, user-initialize, first-profile. Already completed checkpoints are skipped; the flag is invocation-local and rejected for live environments and other commands. On an already provisioned sandbox, no completed checkpoint is deliberately rerun.
+The first invocation fails before executing the specified checkpoint. Doctor reports incomplete provisioning. The final invocation resumes from the failed checkpoint. Supported checkpoints: google-configure, google-authorize, ai-configure, user-initialize, first-profile. Already completed checkpoints are skipped; the flag is invocation-local and rejected for live environments and other commands. On an already provisioned sandbox, no completed checkpoint is deliberately rerun. Doctor also validates the local checkpoint journal read-only and prints fixed repair guidance if its schema, step IDs, or completed first-profile selection is inconsistent; it does not rewrite the journal or contact remote services during that check.
 
 ## Concurrent commands
 

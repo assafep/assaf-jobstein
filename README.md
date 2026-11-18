@@ -16,6 +16,8 @@ jobstein profile list --env sandbox
 
 See [sandbox instructions](docs/sandbox.md). The simulated environment does not contact external services.
 
+`doctor` includes a read-only validation of the local onboarding checkpoint journal before it checks provider readiness. If that check fails, preserve the environment directory and follow the fixed repair guidance; doctor never rewrites checkpoints or remote Workspace state.
+
 ## Live development testing (explicit opt-in)
 
 See [live development instructions](docs/live-development.md) for Google Cloud CLI installation, dedicated test project authorization and the guarded live validation script. The regular sandbox and CI remain credential-free.

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import java.io.IOException;
 import java.util.*;
+import io.github.assafep.jobstein.validation.DiagnosticException;
 import static org.junit.jupiter.api.Assertions.*;
 
 class OnboardingServiceTest {
@@ -41,5 +42,22 @@ class OnboardingServiceTest {
         var noWrites=new OnboardingService.Steps(()->fail(),()->fail(),()->fail(),()->fail(),()->fail());
         assertThrows(IOException.class,()->workflow.run(noWrites,()->{throw new IOException("Selected profile is no longer ready");}));
         assertTrue(repository.completed("first-profile"));
+    }
+
+    @Test void checkpointValidationRejectsUnknownStepWithoutWriting()throws Exception{
+        var repository=new ProvisioningStateRepository(new ConfigurationRepository(root));
+        var config=new ConfigurationRepository(root);
+        config.save("provisioning-state",new ProvisioningStateRepository.State(1,Map.of(
+            "unexpected",new ProvisioningStateRepository.Checkpoint(ProvisioningStateRepository.Status.FAILED,"2026-01-01T00:00:00Z"))));
+        var error=assertThrows(DiagnosticException.class,repository::validate);
+        assertEquals(DiagnosticException.Code.ONBOARDING_CHECKPOINT_INVALID,error.code());
+        assertEquals(ProvisioningStateRepository.Status.FAILED,repository.load().steps().get("unexpected").status());
+    }
+
+    @Test void checkpointValidationRequiresSelectionForCompletedFirstProfile()throws Exception{
+        var repository=new ProvisioningStateRepository(new ConfigurationRepository(root));
+        repository.record("first-profile",ProvisioningStateRepository.Status.COMPLETED);
+        var error=assertThrows(DiagnosticException.class,repository::validate);
+        assertEquals(DiagnosticException.Code.ONBOARDING_CHECKPOINT_INVALID,error.code());
     }
 }
