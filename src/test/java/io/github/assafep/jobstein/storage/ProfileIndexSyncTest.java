@@ -38,6 +38,12 @@ class ProfileIndexSyncTest {
         assertEquals(ProfileIndexRecovery.RecoveryState.CLEAN,recovery.inspect().state());
         assertEquals(profile.id(),service.get("engineer").profile().id());
         assertTrue(config.load(ProfileIndexSync.JOURNAL,ProfileIndexSync.Intent.class).isEmpty());
+        var foreignProfile=new ApplicantProfile(UUID.randomUUID(),UUID.randomUUID(),"Foreign","foreign",ApplicantProfile.Status.INITIALIZING);
+        var foreign=mapper.valueToTree(new UserProfileService.Profiles(Map.of("foreign",new UserProfileService.ProfileState(foreignProfile,List.of(),null))));
+        config.save(ProfileIndexSync.JOURNAL,new ProfileIndexSync.Intent(id,after,foreign));
+        assertThrows(DiagnosticException.class,sync::recoverAndValidate);
+        assertTrue(config.load(ProfileIndexSync.JOURNAL,ProfileIndexSync.Intent.class).isPresent());
+        assertEquals(after,drive.readJson(id));
         config.save(ProfileIndexSync.JOURNAL,new ProfileIndexSync.Intent(id,after,before));
         var external=mapper.createObjectNode();external.putObject("entries");external.put("external",true);
         drive.updateJson(id,external);
