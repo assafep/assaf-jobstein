@@ -12,8 +12,15 @@ public final class ApplicationRegistry {
         ObjectNode read() throws Exception;
         void write(ObjectNode state) throws Exception;
     }
+    @FunctionalInterface public interface ProfileOwnership {
+        void verify(UUID profileId) throws Exception;
+    }
     private final Store store;
-    public ApplicationRegistry(Store store){this.store=Objects.requireNonNull(store);}
+    private final ProfileOwnership ownership;
+    public ApplicationRegistry(Store store){this(store,profileId->{});}
+    public ApplicationRegistry(Store store,ProfileOwnership ownership){
+        this.store=Objects.requireNonNull(store);this.ownership=Objects.requireNonNull(ownership);
+    }
     public static void validate(ObjectNode state)throws IOException { entries(state); }
     private static ObjectNode entries(ObjectNode state)throws IOException{
         if(state==null || !state.path("schemaVersion").isIntegralNumber()
@@ -55,9 +62,10 @@ public final class ApplicationRegistry {
     }
     public synchronized Optional<UUID> reserve(String canonicalId, Set<String> aliases, UUID profileId)throws Exception{
         if(canonicalId==null||canonicalId.isBlank()||profileId==null)throw new IllegalArgumentException("Posting and profile required");
+        ownership.verify(profileId);
         var keys=new HashSet<>(Set.copyOf(aliases));keys.add(canonicalId);
-        if(keys.stream().anyMatch(String::isBlank))throw new IllegalArgumentException("Empty posting alias");
-        var state=store.read();var all=entries(state);
+        if(keys.stream().anyMatch(value->value==null||value.isBlank()))throw new IllegalArgumentException("Empty posting alias");
+        var state=store.read();var all=entries(state);validateOwnership(all);
         var iterator=all.fields();
         while(iterator.hasNext()){
             var entry=iterator.next();var item=entry.getValue();
@@ -73,7 +81,7 @@ public final class ApplicationRegistry {
         return Optional.of(id);
     }
     public synchronized void transition(String canonicalId, UUID applicationId, Status next)throws Exception{
-        var state=store.read();var all=entries(state);
+        var state=store.read();var all=entries(state);validateOwnership(all);
         if(!(all.path(canonicalId) instanceof ObjectNode item)||!applicationId.toString().equals(item.path("applicationId").asText()))
             throw new IOException("Application reservation does not match");
         Status old=Status.valueOf(item.path("status").asText());
@@ -87,5 +95,9 @@ public final class ApplicationRegistry {
         if(!allowed)throw new IOException("Illegal application state transition");
         item.put("status",next.name()).put("updatedAt",Instant.now().toString());
         store.write(state);
+    }
+    private void validateOwnership(ObjectNode entries)throws Exception{
+        var fields=entries.fields();
+        while(fields.hasNext())ownership.verify(uuid(fields.next().getValue().path("profileId")));
     }
 }

@@ -249,6 +249,12 @@ public final class UserProfileService {
                 return object;
             }
             public void write(ObjectNode state)throws Exception {verifyAccount();drive.updateJson(resource("user/registry"),state);}
+        },profileId->{
+            verifyAccount();
+            var owner=user();
+            if(profiles().entries().values().stream().noneMatch(state->profileId.equals(state.profile().id())
+                && owner.id().equals(state.profile().userId())))
+                throw new IOException("Application profile does not belong to the current user");
         });
     }
     public ProfileIndexRecovery recovery(){return new ProfileIndexRecovery(repository,drive,()->{verifyAccount();return resource("user/profiles-index");},this::user);}

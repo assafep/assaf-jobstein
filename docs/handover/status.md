@@ -74,3 +74,8 @@ The focused recovery test passed. `./gradlew --no-daemon test installDist --reru
 Pending profile-index intents now validate canonical index IDs, object-shaped before/after snapshots, current-user ownership, profile-key/slug consistency, and unique profile UUIDs before automatic recovery. Both current local and remote index copies are validated before accepting them as synchronized. Invalid foreign-owner journals remain pending and leave the remote index unchanged. Existing stale-snapshot and lost-write-response recovery paths remain covered by synthetic tests.
 
 `./gradlew --no-daemon test installDist --rerun-tasks` passed all 76 tests (zero failures/errors/skips), and `bash scripts/smoke-test.sh` passed with its final success marker. `git diff --check` passed. No live Google data was accessed; publication CI is pending.
+
+## Application registry ownership audit (2026-11-18; locally validated, publication pending)
+The live application registry now verifies that reservation and transition profile IDs belong to the initialized user’s profile index. Persisted entries are rechecked before mutations, so a foreign profile reference fails closed without changing the registry. Generic registry instances retain an explicit no-op ownership policy for offline tests; user-bound services supply the ownership validator. No submission automation or live applications were added.
+
+`./gradlew --no-daemon test installDist --rerun-tasks` passed all 77 tests (zero failures/errors/skips), and `bash scripts/smoke-test.sh` passed with its final success marker. `git diff --check` passed. No live Google data was accessed; publication CI is pending.

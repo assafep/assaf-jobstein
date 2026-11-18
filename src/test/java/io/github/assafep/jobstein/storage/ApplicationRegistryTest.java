@@ -68,4 +68,14 @@ class ApplicationRegistryTest {
             assertThrows(java.io.IOException.class,()->ApplicationRegistry.validate(memory.state));
         }
     }
+    @Test void ownershipValidatorBlocksForeignReservationsAndTransitions()throws Exception{
+        var memory=new Memory();
+        UUID owner=UUID.randomUUID();
+        var registry=new ApplicationRegistry(memory,id->{if(!owner.equals(id))throw new java.io.IOException("foreign profile");});
+        assertTrue(registry.reserve("owned",Set.of(),owner).isPresent());
+        UUID application=UUID.fromString(memory.state.path("entries").path("owned").path("applicationId").asText());
+        assertThrows(java.io.IOException.class,()->registry.reserve("foreign",Set.of(),UUID.randomUUID()));
+        ((ObjectNode)memory.state.path("entries").path("owned")).put("profileId",UUID.randomUUID().toString());
+        assertThrows(java.io.IOException.class,()->registry.transition("owned",application,ApplicationRegistry.Status.SUBMITTING));
+    }
 }
