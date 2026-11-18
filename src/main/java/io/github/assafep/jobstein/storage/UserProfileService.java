@@ -151,7 +151,14 @@ public final class UserProfileService {
         saveProfile(updated);return updated;
     }
     private static ApplicantProfile withStatus(ApplicantProfile p,ApplicantProfile.Status status){return new ApplicantProfile(p.id(),p.userId(),p.targetRole(),p.slug(),status);}
-    public record DescriptorIntent(String operationId,JsonNode payload){}
+    public record DescriptorIntent(String operationId,JsonNode payload){
+        public DescriptorIntent{
+            if(operationId==null||!operationId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"))
+                throw new IllegalArgumentException("Invalid descriptor operation ID");
+            if(payload==null||!payload.isObject())throw new IllegalArgumentException("Invalid descriptor journal payload");
+            payload=payload.deepCopy();
+        }
+    }
     private boolean hasUnfinishedDescriptor(ProfileState state)throws Exception{
         String journal="descriptor-"+state.profile().id();
         var pendingIntent=repository.load(journal,DescriptorIntent.class);
@@ -217,9 +224,11 @@ public final class UserProfileService {
     public JsonNode descriptor(String slug)throws Exception{
         verifyAccount();
         var state=get(slug);if(state.descriptorId()==null)throw new DiagnosticException(DiagnosticException.Code.DESCRIPTOR_MISSING);
-        var data=drive.readJson(state.descriptorId());
         if(state.resumes().isEmpty())throw new IOException("Resume missing");
         var version=state.resumes().getLast();
+        String name="applicant-descriptor-"+version.hash().substring(0,12)+".json";
+        drive.validateJsonResource(state.descriptorId(),resource("profile/"+slug),name);
+        var data=drive.readJson(state.descriptorId());
         DescriptorValidator.validateEnvelope(data,state.profile().id(),version.hash());
         var document=ResumeDocument.readBytes(drive.readBytes(version.id(),ResumeDocument.MAX_BYTES));
         if(!version.hash().equals(document.sha256()))throw new DiagnosticException(DiagnosticException.Code.RESUME_MISMATCH);
