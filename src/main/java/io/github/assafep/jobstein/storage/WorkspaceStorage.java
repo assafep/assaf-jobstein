@@ -16,6 +16,7 @@ public interface WorkspaceStorage {
     void updateJson(String fileId, JsonNode data) throws Exception;
     byte[] readBytes(String fileId,int limit)throws Exception;
     JsonNode readJson(String fileId) throws Exception;
+    boolean hasActiveNamedResource(String parent, String name) throws Exception;
 
     default void validateJsonResource(String fileId, String parent, String name) throws Exception {
         var metadata = file(fileId);

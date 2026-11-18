@@ -87,4 +87,25 @@ class UserProfileIntegrationTest {
 
         assertThrows(java.io.IOException.class,()->service.initialize("Example Applicant"));
     }
+
+    @Test void refusesToAdoptAnUntrackedRemoteSeedInsteadOfCreatingADuplicate()throws Exception{
+        var configuration=new ConfigurationRepository(root.resolve("config"));
+        var storage=new LocalWorkspaceStorage(root.resolve("workspace"));
+        var service=new UserProfileService(configuration,storage,
+            new MockAiExecution(new AiConfiguration(1,"standard",Map.of("standard",new AiIntegrationConfig("mock-xai",Map.of("model","mock-grok"))),Map.of())),"sandbox");
+        service.initialize("Example Applicant");
+        var manifestRepository=new ResourceManifestRepository(configuration);
+        var manifest=manifestRepository.load();
+        var ids=new HashMap<>(manifest.resourceIds());
+        String registryId=ids.remove("user/registry");
+        var remoteRegistry=storage.readJson(registryId);
+        configuration.save("resource-manifest",new ResourceManifestRepository.Manifest(1,ids));
+        configuration.remove("upload-intents");
+        var indexRepository=new ConfigurationRepository(root.resolve("workspace"));
+        int resourceCount=indexRepository.load("index",LocalWorkspaceStorage.Index.class).orElseThrow().resources().size();
+
+        assertThrows(java.io.IOException.class,()->service.initialize("Example Applicant"));
+        assertEquals(remoteRegistry,storage.readJson(registryId));
+        assertEquals(resourceCount,indexRepository.load("index",LocalWorkspaceStorage.Index.class).orElseThrow().resources().size());
+    }
 }

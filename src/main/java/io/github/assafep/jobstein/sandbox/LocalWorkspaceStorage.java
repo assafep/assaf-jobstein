@@ -97,4 +97,8 @@ public final class LocalWorkspaceStorage implements WorkspaceStorage {
         if(!"application/json".equals(resource(fileId).mime()))throw new IOException("Not a JSON resource");
         return JSON.readTree(Files.readAllBytes(content(fileId)));
     }
+    @Override public synchronized boolean hasActiveNamedResource(String parent,String name)throws IOException{
+        parent(parent);
+        return index().resources().values().stream().anyMatch(item->Objects.equals(parent,item.parent())&&name.equals(item.name()));
+    }
 }

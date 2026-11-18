@@ -62,6 +62,14 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         request("GET","https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=1",null,null);
     }
     public JsonNode file(String fileId) throws Exception {return request("GET","https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?fields=id,name,mimeType,parents,trashed,appProperties,sha256Checksum,capabilities(canEdit),owners(emailAddress,me)",null,null);}
+    public boolean hasActiveNamedResource(String parent,String name)throws Exception{
+        String escaped=name.replace("\\","\\\\").replace("'","\\'");
+        String query="trashed = false and '"+id(parent)+"' in parents and name = '"+escaped+"'";
+        var found=request("GET","https://www.googleapis.com/drive/v3/files?q="+q(query)+"&fields=nextPageToken,files(id)&pageSize=1",null,null);
+        var files=found.path("files");
+        if(!files.isArray()||files.size()>1)throw new IOException("Invalid Drive resource discovery response");
+        return files.size()>0||found.hasNonNull("nextPageToken");
+    }
     public Optional<String> findFolder(String parent,String name,String marker) throws Exception {
         String escaped=marker.replace("\\","\\\\").replace("'","\\'");
         String query="trashed = false and mimeType = 'application/vnd.google-apps.folder' and '"+(parent==null?"root":id(parent))+"' in parents and appProperties has { key='jobsteinId' and value='"+escaped+"' }";

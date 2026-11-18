@@ -78,4 +78,23 @@ class DriveJsonMetadataHttpTest {
             assertThrows(IOException.class, () -> drive.validateJsonResource("seed-id", "user-folder", "user.json"));
         }
     }
+
+    @Test void detectsNamedResourcesAndRejectsMalformedDiscovery() throws Exception {
+        var response = new AtomicReference<>("{\"files\":[]}");
+        try (var server = new MockHttp(exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            if (path.equals("/token")) MockHttp.reply(exchange, 200, "{\"access_token\":\"fixture\",\"expires_in\":3600}");
+            else if (path.equals("/drive/v3/files")) MockHttp.reply(exchange, 200, response.get());
+            else throw new AssertionError(path);
+        })) {
+            var drive = client(server);
+            assertFalse(drive.hasActiveNamedResource("parent-id", "application-registry.json"));
+            response.set("{\"files\":[{\"id\":\"existing\"}]}");
+            assertTrue(drive.hasActiveNamedResource("parent-id", "application-registry.json"));
+            response.set("{\"files\":[],\"nextPageToken\":\"more\"}");
+            assertTrue(drive.hasActiveNamedResource("parent-id", "application-registry.json"));
+            response.set("{}");
+            assertThrows(IOException.class, () -> drive.hasActiveNamedResource("parent-id", "application-registry.json"));
+        }
+    }
 }

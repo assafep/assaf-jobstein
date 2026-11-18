@@ -43,6 +43,7 @@ class FolderDescriptorRecoveryTest {
         }
         public byte[] readBytes(String id,int limit)throws Exception{return delegate.readBytes(id,limit);}
         public JsonNode readJson(String id)throws Exception{return delegate.readJson(id);}
+        public boolean hasActiveNamedResource(String parent,String name)throws Exception{return delegate.hasActiveNamedResource(parent,name);}
     }
     @Test void recoversFolderAndDescriptorWithoutRegenerating()throws Exception{
         var config=new ConfigurationRepository(root.resolve("config"));

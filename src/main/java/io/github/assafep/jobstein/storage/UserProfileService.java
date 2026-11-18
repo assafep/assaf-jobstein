@@ -77,6 +77,8 @@ public final class UserProfileService {
     private String seed(String key,String parent,String name,JsonNode data)throws Exception{
         String known=manifest.load().resourceIds().get(key);
         if(known!=null){drive.validateJsonResource(known,parent,name);drive.readJson(known);return known;}
+        if(!pending.load().resourceIds().containsKey("seed/"+key)&&drive.hasActiveNamedResource(parent,name))
+            throw new IOException("Drive seed exists without local manifest identity; restore the local manifest before initialization");
         String id=retryableUpload("seed/"+key,parent,name,"application/json",JSON.writeValueAsBytes(data));manifest.remember(key,id);return id;
     }
     private static ObjectNode registrySeed(){var node=JSON.createObjectNode().put("schemaVersion",1);node.putObject("entries");return node;}
