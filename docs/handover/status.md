@@ -21,10 +21,10 @@ Key directories: src/main/java/io/github/assafep/jobstein/{cli,ai,google,storage
 - No authenticated end-to-end Google or xAI development run has been performed. Local HTTP tests do not establish live API compatibility. See ../live-development.md.
 - Native Linux Secret Service backend is experimental and deliberately disabled because missing-entry vs unavailable-backend behavior is ambiguous; no credential migration or cross-platform native backend.
 - Single local writer only; no distributed CAS, full storage backup/restore, or automatic conflicting-journal merge.
-- Recovery/validation of all manifest identities and seed metadata needs further audit; folder markers and state ownership must be respected. Completed onboarding checkpoints and selected first role need stronger validation.
+- Manifest/seed identity, descriptor/profile-index journals, application ownership, API bounds, configuration permissions and onboarding checkpoint validation are implemented and covered by the green CI runs recorded below. Live provider compatibility remains unverified.
 - Some diagnostics remain generic. Do not expose source data in logs.
-- Release packaging/install documentation and license choice remain open.
-- DevLoop initial Python prototype was delivered as a separate ZIP outside Git, with four offline tests reported passing; it was not published as a separate repository or installed/verified on the user's machine. The repository does not contain that prototype at this baseline.
+- Release packaging/install documentation is complete; license selection and publication authority remain open owner decisions.
+- DevLoop initial Python prototype was reported as a separate ZIP outside Git, but it is absent from the repository and scoped project directories and has not been installed or verified on the user's machine. It remains a separate-project blocker.
 - Hourly ChatGPT development automation was active when this handover was prepared. It must be coordinated before starting a second writer.
 
 ## Update convention
@@ -110,3 +110,6 @@ New environment directories are created owner-only so a fresh environment does n
 
 ## Release/version policy (2026-11-18; documentation only)
 Added `docs/release-policy.md` and a README link. The project remains `0.1.0-SNAPSHOT`; release gates require Java 21 tests, install/smoke/distribution verification, an exact CI-green commit and checksums. No license was selected, no release was published, and the owner must decide licensing and release terms. Persisted-state migrations remain explicit and fail closed rather than implicit.
+
+## Handover reconciliation (2026-11-18)
+The recent administrative audits are now publication-verified: seed identity (44308313473), descriptor recovery (44309837248), profile-index ownership (44311843552), application registry ownership (44312911023), credential ownership (44313986210), Workspace bounds (44314692321), distributions (44315396663), live checklist (44315972522), onboarding doctor checks (44317054671), configuration permissions (44318335482), and release policy (44318996931). Remaining blockers are external: an explicit reviewed credential migration requires a supported native backend and owner choice, and the separate DevLoop prototype is unavailable for verification. No operational job-search automation or live provider claim is authorized.
