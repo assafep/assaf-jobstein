@@ -17,7 +17,7 @@ This is an actionable queue, not a promise that all entries remain bugs. Verify 
 ## P2 — Distribution and readiness
 - Reproducible Gradle distribution, checksums, installation/uninstallation documentation and cross-host smoke tests. Implemented locally on 2026-11-18: reproducible ZIP/TAR archives, SHA-256 sidecars, extraction/CLI verification, and README guidance pass locally; publication CI pending. Keep personal state outside distributions.
 - Document release/version policy; do not pick an open-source license or publish releases without user decision.
-- Prepare opt-in authenticated test checklist and redacted evidence format. Live test accounts, OAuth consent, billing and xAI credentials require the user. Never fake live readiness.
+- Prepare opt-in authenticated test checklist and redacted evidence format. Completed documentation on 2026-11-18 with disposable development-only preconditions, cleanup guidance, and sanitized evidence fields. Live test accounts, OAuth consent, billing and xAI credentials still require the user; no live readiness is claimed.
 - Once administrative scope has been met, report remaining external blockers and stop rather than implement operational job-search features without approval.
 
 ## Parallel migration work (separate DevLoop project)

@@ -97,3 +97,6 @@ Workspace JSON responses are now bounded to 5 MB, preventing unbounded response 
 Gradle archive tasks now normalize file ordering and timestamps for reproducible ZIP/TAR output. `distributionChecksums` writes SHA-256 sidecars for both archives. `scripts/verify-distribution.sh` verifies both checksums, extracts each archive, and runs the CLI help command; it reports a clear Java 21 prerequisite because the packaged classes require Java 21. README documents packaging, checksum verification, and removal of unpacked distributions while keeping user state outside the distribution.
 
 `./gradlew --no-daemon test installDist --rerun-tasks` passed all 80 tests (zero failures/errors/skips), `bash scripts/smoke-test.sh` passed, and `JAVA_HOME=/home/k/.jdks/openjdk-21.0.2 bash scripts/verify-distribution.sh` passed. No personal state or credentials were packaged; publication CI is pending.
+
+## Live validation evidence checklist (2026-11-18; documentation only)
+Added a manual, opt-in development validation checklist with explicit disposable-account/project preconditions, read-validation-only scope, cleanup steps, and a redacted evidence template. It does not claim live verification and does not authorize production operations, mail, applications, or unattended cloud provisioning. No live credentials or external accounts were accessed.

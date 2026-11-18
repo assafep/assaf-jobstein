@@ -55,3 +55,5 @@ Record test date, commit and pass/fail checks without account IDs, file IDs, res
 ## Current verification status
 
 The live workflow is supplied for manual execution. No authenticated Google/xAI requests, Codespace provisioning, GCP billing changes or end-to-end live runs have been performed by this repository change.
+
+Use the [live validation checklist](live-validation-checklist.md) for the preconditions, cleanup steps, and redacted evidence template. A recorded pass remains scoped to the disposable development account, project, commit, and time of that run.

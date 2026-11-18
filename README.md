@@ -19,6 +19,7 @@ See [sandbox instructions](docs/sandbox.md). The simulated environment does not 
 ## Live development testing (explicit opt-in)
 
 See [live development instructions](docs/live-development.md) for Google Cloud CLI installation, dedicated test project authorization and the guarded live validation script. The regular sandbox and CI remain credential-free.
+The [live validation checklist](docs/live-validation-checklist.md) defines the manual preconditions, cleanup steps, and redacted evidence format.
 
 ## Windows (WSL 2)
 
