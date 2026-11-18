@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 
 public final class WorkspaceClient implements io.github.assafep.jobstein.storage.WorkspaceStorage {
     private static final ObjectMapper JSON=new ObjectMapper();
+    private static final int MAX_JSON_BYTES=5_000_000;
     private final GoogleOAuth oauth;
     private final HttpClient http=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(20)).build();
     private final Optional<URI> testOrigin;
@@ -26,13 +27,21 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         String token=oauth.accessToken();
         var builder=HttpRequest.newBuilder(endpoint(url)).timeout(Duration.ofSeconds(60)).header("Authorization","Bearer "+token);
         if(body!=null) builder.header("Content-Type",type);
-        var response=http.send(builder.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofByteArray(body)).build(),HttpResponse.BodyHandlers.ofString());
+        var response=http.send(builder.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofByteArray(body)).build(),HttpResponse.BodyHandlers.ofInputStream());
         if(response.statusCode()==401){
+            response.body().close();
             oauth.invalidateAccessToken(token);
             if(retryRead&&method.equals("GET"))return request(method,url,body,type,false);
+            throw new WorkspaceHttpException(401);
         }
+        byte[] bytes;
+        try(var input=response.body()){
+            bytes=input.readNBytes(MAX_JSON_BYTES+1);
+        }
+        if(bytes.length>MAX_JSON_BYTES)throw new IOException("Workspace JSON response exceeds size limit");
         if(response.statusCode()<200 || response.statusCode()>=300) throw new WorkspaceHttpException(response.statusCode());
-        return response.body().isBlank()?JSON.createObjectNode():JSON.readTree(response.body());
+        String responseBody=new String(bytes,StandardCharsets.UTF_8);
+        return responseBody.isBlank()?JSON.createObjectNode():JSON.readTree(responseBody);
     }
     private static String q(String s){return URLEncoder.encode(s,StandardCharsets.UTF_8);}
     private static String id(String s){if(s==null||!s.matches("[a-zA-Z0-9_-]+"))throw new IllegalArgumentException("Invalid resource ID");return s;}
@@ -152,9 +161,9 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     public JsonNode readJson(String fileId) throws Exception {return request("GET","https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?alt=media",null,null);}
     public JsonNode document(String documentId) throws Exception {return request("GET","https://docs.googleapis.com/v1/documents/"+id(documentId),null,null);}
     public JsonNode updateDocument(String documentId,JsonNode requests) throws Exception {return request("POST","https://docs.googleapis.com/v1/documents/"+id(documentId)+":batchUpdate",JSON.writeValueAsBytes(requests),"application/json");}
-    public JsonNode listMessages(String query) throws Exception {return request("GET","https://gmail.googleapis.com/gmail/v1/users/me/messages?q="+q(query),null,null);}
+    public JsonNode listMessages(String query) throws Exception {return request("GET","https://gmail.googleapis.com/gmail/v1/users/me/messages?q="+q(query)+"&maxResults=100",null,null);}
     public JsonNode message(String messageId) throws Exception {return request("GET","https://gmail.googleapis.com/gmail/v1/users/me/messages/"+id(messageId),null,null);}
     public JsonNode createDraft(String base64UrlMime) throws Exception {var body=JSON.createObjectNode();body.putObject("message").put("raw",base64UrlMime);return request("POST","https://gmail.googleapis.com/gmail/v1/users/me/drafts",JSON.writeValueAsBytes(body),"application/json");}
     public JsonNode sendDraft(String draftId) throws Exception {return request("POST","https://gmail.googleapis.com/gmail/v1/users/me/drafts/send",JSON.writeValueAsBytes(JSON.createObjectNode().put("id",id(draftId))),"application/json");}
-    public JsonNode calendarEvents() throws Exception {return request("GET","https://www.googleapis.com/calendar/v3/calendars/primary/events",null,null);}
+    public JsonNode calendarEvents() throws Exception {return request("GET","https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=100",null,null);}
 }

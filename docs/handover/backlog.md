@@ -11,7 +11,7 @@ This is an actionable queue, not a promise that all entries remain bugs. Verify 
 ## P1 — Security and operational usability
 - Evaluate safe missing-entry semantics for native Linux Secret Service; if reliable, enable only with tested behavior and explicit backend selection. Completed audit: `secret-tool` ambiguity is verified, so the backend remains disabled and fail-closed; synthetic cleanup/isolation tests pass in CI. Credential migration needs an explicit reviewed workflow.
 - Audit POSIX file ownership, ancestor symlink behavior and configuration migration; avoid claiming encryption. Credential ancestor symlinks, hard links, and existing path ownership now fail closed with synthetic coverage and local full-suite validation. Concurrent filesystem replacement remains outside the single-writer guarantee; configuration migration and actionable sanitized diagnostics remain open.
-- Review API contract handling, bounded reads, pagination and safe retry behavior where it serves administrative validation. Use loopback tests, not real credentials.
+- Review API contract handling, bounded reads, pagination and safe retry behavior where it serves administrative validation. Implemented locally on 2026-11-18: JSON response bodies are capped at 5 MB and Gmail/Calendar listings request 100 results; loopback retry and bounds tests pass. Use loopback tests, not real credentials.
 - Improve doctor checks and onboarding checkpoint validation, including clear repair guidance and no unintended remote writes.
 
 ## P2 — Distribution and readiness

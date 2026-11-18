@@ -8,6 +8,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -83,6 +84,30 @@ class WorkspaceHttpIT {
             assertThrows(WorkspaceClient.WorkspaceHttpException.class,()->client.readBytes("denied",10));
             assertEquals(2,reads.get());
             assertEquals(2,refreshes.get());
+        }
+    }
+    @Test void rejectsOversizedJsonResponses()throws Exception{
+        try(var server=new MockHttp(exchange->{
+            if(exchange.getRequestURI().getPath().equals("/token"))MockHttp.reply(exchange,200,"{\"access_token\":\"token\",\"expires_in\":3600}");
+            else MockHttp.reply(exchange,200,"{\"payload\":\""+"x".repeat(5_000_001)+"\"}");
+        })){
+            var client=new WorkspaceClient(oauth(server),server.origin());
+            assertThrows(IOException.class,client::userInfo);
+        }
+    }
+    @Test void boundsMessageAndCalendarListings()throws Exception{
+        var queries=new AtomicReference<>("");
+        try(var server=new MockHttp(exchange->{
+            String path=exchange.getRequestURI().getPath();
+            if(path.equals("/token"))MockHttp.reply(exchange,200,"{\"access_token\":\"token\",\"expires_in\":3600}");
+            else if(path.endsWith("/messages")||path.endsWith("/events")){queries.set(exchange.getRequestURI().getQuery());MockHttp.reply(exchange,200,"{}");}
+            else throw new AssertionError(path);
+        })){
+            var client=new WorkspaceClient(oauth(server),server.origin());
+            client.listMessages("is:unread");
+            assertTrue(queries.get().contains("maxResults=100"));
+            client.calendarEvents();
+            assertTrue(queries.get().contains("maxResults=100"));
         }
     }
 }

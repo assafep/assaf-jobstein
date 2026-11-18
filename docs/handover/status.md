@@ -87,3 +87,8 @@ The Linux Secret Service adapter remains deliberately disabled. `secret-tool loo
 The file credential backend now verifies that existing secret roots, nested secret directories, and credential files are owned by the current user, in addition to the existing mode, symlink, ancestor, and hard-link checks. Missing ownership metadata fails closed. Synthetic tests cover ownership of newly created paths; existing hard-link and ancestor safety tests remain green. This is local ownership validation under the single-writer model and does not prevent concurrent replacement races or provide encryption.
 
 `./gradlew --no-daemon test installDist --rerun-tasks` passed all 77 tests (zero failures/errors/skips), and `bash scripts/smoke-test.sh` passed with its final success marker. No real credentials were accessed; publication CI is pending.
+
+## Workspace API bounds audit (2026-11-18; locally validated, publication pending)
+Workspace JSON responses are now bounded to 5 MB, preventing unbounded response buffering. Gmail message and Calendar event listings request at most 100 results per call. Existing read-only 401 retry behavior and no automatic mutation replay remain unchanged. Loopback tests cover oversized JSON rejection, listing limits, token refresh, retry exhaustion, and bounded binary downloads.
+
+`./gradlew --no-daemon test installDist --rerun-tasks` passed all 80 tests (zero failures/errors/skips), and `bash scripts/smoke-test.sh` passed with its final success marker. No live Workspace data was accessed; publication CI is pending.
