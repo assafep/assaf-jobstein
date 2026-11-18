@@ -39,6 +39,7 @@ public final class LocalWorkspaceStorage implements WorkspaceStorage {
         var item=resource(fileId);
         var result=JSON.createObjectNode().put("id",item.id()).put("name",item.name()).put("mimeType",item.mime()).put("trashed",false);
         result.putObject("capabilities").put("canEdit",true);
+        result.putArray("owners").addObject().put("emailAddress", "applicant@example.invalid").put("me", true);
         if(item.parent()!=null)result.putArray("parents").add(item.parent());
         result.putObject("appProperties").put("jobsteinId",item.marker());
         return result;

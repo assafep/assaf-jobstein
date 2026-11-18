@@ -49,13 +49,13 @@ bash scripts/smoke-test.sh
 ./build/install/jobstein/bin/jobstein doctor --env sandbox
 ```
 
-Add the two `export` lines above to `~/.bashrc` to retain the Java configuration in new Ubuntu Bash terminals. `JAVA_HOME` must point to the Linux JDK directory, not its `bin` directory or a Windows JDK path. The version check should report Java 21 before running Gradle.
+Add the two `export` lines above to `~/.bashrc` to retain the Java configuration in new Ubuntu Bash terminals. `JAVA_HOME` must point to the Linux JDK directory, not its `bin` directory or a Windows JDK path. This also makes Java 21 the default for other Java commands in that shell.
 
 When launching commands from PowerShell, select Ubuntu explicitly: `wsl -d Ubuntu -- bash -lc 'java -version'`. A bare `bash` or `wsl` may select Docker Desktop instead, which does not provide the development shell. Run builds in the Linux checkout and use the GitHub CLI installed and authenticated there; Windows and Ubuntu have separate PATHs. For example, `wsl -d Ubuntu -- bash -lc 'cd ~/projects/assaf-jobstein && ./gradlew --no-daemon test installDist && bash scripts/smoke-test.sh'`. Check the Linux checkout for existing changes before using it.
 
 The smoke test deliberately triggers errors and `FAIL` diagnostics to check failure recovery. A successful run ends with `PASS: all sandbox smoke checks completed` and exit code 0.
 
-The sandbox uses synthetic data and needs no credentials. Run subsequent development commands in Ubuntu. In IntelliJ IDEA, open the Linux checkout through WSL and select its JDK 21 for both the project SDK and Gradle JVM.
+The sandbox uses synthetic data and needs no credentials. Run subsequent development commands in Ubuntu. In IntelliJ IDEA, open the Linux checkout through WSL and select its JDK 21 for the project SDK. IntelliJ's own runtime, the shell's `JAVA_HOME`, and Gradle's daemon JVM are separate settings.
 
 ## Development status
 
@@ -63,7 +63,11 @@ Administrative CLI and live Google/xAI adapters are implemented but live end-to-
 
 ## Build
 
-Requires JDK 21. The Gradle wrapper downloads and runs the pinned Gradle version, so a separate Gradle installation is not needed. Run commands from the repository root; the first wrapper run needs network access to download Gradle and dependencies.
+Requires Java 21. The Gradle wrapper downloads and runs the pinned Gradle version, so a separate Gradle installation is not needed. The project declares Java 21 as its compile/test toolchain in `build.gradle.kts`. It also commits `gradle/gradle-daemon-jvm.properties`, which asks Gradle to run the build daemon on Java 21. This project-level criterion takes precedence over `JAVA_HOME` for the daemon, so a shell that defaults to another Java version can still select the build's required JVM.
+
+The daemon criteria file includes Foojay download URLs for supported operating systems and architectures. Gradle first detects an installed matching JDK; if none is available, it can provision Java 21 into that user's Gradle User Home (normally `~/.gradle/jdks`). This is a per-user Gradle cache, not a system-wide JDK installation. Provisioning requires network access to the configured Foojay URLs. Developers and remote build agents can instead preinstall Java 21 and use the same committed criteria. CI already installs Java 21 before running the wrapper; production or locked-down build agents should likewise provide Java 21 or allow the Gradle user-home download. The wrapper distribution and build dependencies also require network access on first use.
+
+`JAVA_HOME` remains useful for shell commands and tools outside Gradle. The daemon criteria only selects Gradle's build JVM; it does not change the Java version reported by `java -version` in the parent shell or IntelliJ's own runtime. To regenerate the checked-in criteria when changing the required JDK, run `./gradlew updateDaemonJvm --jvm-version=21` from a working Java 21 environment, review the generated platform URLs, and commit the result.
 
 ```sh
 ./gradlew test installDist

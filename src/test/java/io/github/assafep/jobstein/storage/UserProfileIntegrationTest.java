@@ -11,6 +11,7 @@ import org.apache.pdfbox.pdmodel.font.*;
 import java.nio.file.*;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
+import io.github.assafep.jobstein.provisioning.ResourceManifestRepository;
 
 class UserProfileIntegrationTest {
     @TempDir Path root;
@@ -53,5 +54,37 @@ class UserProfileIntegrationTest {
         assertTrue(registry.reserve("ats:example:1",Set.of(),profile.id()).isPresent());
         assertTrue(service().applicationRegistry().reserve("ats:example:1",Set.of(),second.id()).isEmpty());
         service.validateUser();
+    }
+
+    @Test void refusesNewIdentityWhenRemoteRootExistsWithoutLocalUser()throws Exception{
+        var configuration=new ConfigurationRepository(root.resolve("config"));
+        var storage=new LocalWorkspaceStorage(root.resolve("workspace"));
+        var service=new UserProfileService(configuration,storage,
+            new MockAiExecution(new AiConfiguration(1,"standard",Map.of("standard",new AiIntegrationConfig("mock-xai",Map.of("model","mock-grok"))),Map.of())),"sandbox");
+        service.initialize("Example Applicant");
+        var indexRepository=new ConfigurationRepository(root.resolve("workspace"));
+        int resourceCount=indexRepository.load("index",LocalWorkspaceStorage.Index.class).orElseThrow().resources().size();
+        configuration.remove("user");
+
+        assertThrows(java.io.IOException.class,()->service.initialize("Different Applicant"));
+        assertTrue(configuration.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).isEmpty());
+        assertEquals(resourceCount,indexRepository.load("index",LocalWorkspaceStorage.Index.class).orElseThrow().resources().size());
+    }
+
+    @Test void validatesManifestSeedMetadataBeforeReuse()throws Exception{
+        var configuration=new ConfigurationRepository(root.resolve("config"));
+        var storage=new LocalWorkspaceStorage(root.resolve("workspace"));
+        var service=new UserProfileService(configuration,storage,
+            new MockAiExecution(new AiConfiguration(1,"standard",Map.of("standard",new AiIntegrationConfig("mock-xai",Map.of("model","mock-grok"))),Map.of())),"sandbox");
+        service.initialize("Example Applicant");
+        String id=new ResourceManifestRepository(configuration).load().resourceIds().get("user/metadata");
+        var indexRepository=new ConfigurationRepository(root.resolve("workspace"));
+        var index=indexRepository.load("index",LocalWorkspaceStorage.Index.class).orElseThrow();
+        var resources=new HashMap<>(index.resources());
+        var original=resources.get(id);
+        resources.put(id,new LocalWorkspaceStorage.Resource(original.id(),"wrong-parent",original.name(),original.mime(),original.marker()));
+        indexRepository.save("index",new LocalWorkspaceStorage.Index(resources));
+
+        assertThrows(java.io.IOException.class,()->service.initialize("Example Applicant"));
     }
 }

@@ -61,7 +61,7 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
         request("GET","https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=1",null,null);
         request("GET","https://www.googleapis.com/calendar/v3/calendars/primary/events?maxResults=1",null,null);
     }
-    public JsonNode file(String fileId) throws Exception {return request("GET","https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?fields=id,name,mimeType,parents,trashed,appProperties,sha256Checksum,capabilities(canEdit)",null,null);}
+    public JsonNode file(String fileId) throws Exception {return request("GET","https://www.googleapis.com/drive/v3/files/"+id(fileId)+"?fields=id,name,mimeType,parents,trashed,appProperties,sha256Checksum,capabilities(canEdit),owners(emailAddress,me)",null,null);}
     public Optional<String> findFolder(String parent,String name,String marker) throws Exception {
         String escaped=marker.replace("\\","\\\\").replace("'","\\'");
         String query="trashed = false and mimeType = 'application/vnd.google-apps.folder' and '"+(parent==null?"root":id(parent))+"' in parents and appProperties has { key='jobsteinId' and value='"+escaped+"' }";

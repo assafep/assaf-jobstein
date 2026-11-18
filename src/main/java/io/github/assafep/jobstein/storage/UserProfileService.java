@@ -76,7 +76,7 @@ public final class UserProfileService {
     }
     private String seed(String key,String parent,String name,JsonNode data)throws Exception{
         String known=manifest.load().resourceIds().get(key);
-        if(known!=null){drive.readJson(known);return known;}
+        if(known!=null){drive.validateJsonResource(known,parent,name);drive.readJson(known);return known;}
         String id=retryableUpload("seed/"+key,parent,name,"application/json",JSON.writeValueAsBytes(data));manifest.remember(key,id);return id;
     }
     private static ObjectNode registrySeed(){var node=JSON.createObjectNode().put("schemaVersion",1);node.putObject("entries");return node;}
@@ -84,10 +84,24 @@ public final class UserProfileService {
         String subject=drive.userInfo().path("sub").asText("");
         if(subject.isBlank())throw new DiagnosticException(DiagnosticException.Code.IDENTITY_UNAVAILABLE);
         var existing=repository.load("user",JobsteinUser.class);
+        String rootName=environment.equals("production")?"jobstein":"jobstein-"+environment;
+        if(existing.isEmpty()){
+            String marker="jobstein:"+environment+":root";
+            String knownRoot=manifest.load().resourceIds().get("root");
+            if(knownRoot!=null){
+                drive.validateFolder(knownRoot,null,rootName,marker);
+                throw new IOException("Remote Jobstein root exists without local user identity; restore local metadata before initialization");
+            }
+            var remoteRoot=drive.findFolder(null,rootName,marker);
+            if(remoteRoot.isPresent()){
+                drive.validateFolder(remoteRoot.get(),null,rootName,marker);
+                throw new IOException("Remote Jobstein root exists without local user identity; restore local metadata before initialization");
+            }
+        }
         var user=existing.orElseGet(()->new JobsteinUser(UUID.randomUUID(),fullName,slug(fullName),subject));
         if(!user.googleAccountSubject().equals(subject))throw new DiagnosticException(DiagnosticException.Code.ACCOUNT_MISMATCH);
         repository.save("user",user);
-        String root=folder("root",null,environment.equals("production")?"jobstein":"jobstein-"+environment);
+        String root=folder("root",null,rootName);
         String home=folder("user",root,user.slug());
         String shared=folder("user/shared",home,"_shared");
         seed("user/metadata",home,"user.json",JSON.valueToTree(user));

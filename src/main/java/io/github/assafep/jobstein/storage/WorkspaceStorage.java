@@ -16,4 +16,23 @@ public interface WorkspaceStorage {
     void updateJson(String fileId, JsonNode data) throws Exception;
     byte[] readBytes(String fileId,int limit)throws Exception;
     JsonNode readJson(String fileId) throws Exception;
+
+    default void validateJsonResource(String fileId, String parent, String name) throws Exception {
+        var metadata = file(fileId);
+        if (!fileId.equals(metadata.path("id").asText())
+            || !name.equals(metadata.path("name").asText())
+            || !"application/json".equals(metadata.path("mimeType").asText())
+            || !metadata.path("trashed").isBoolean() || metadata.path("trashed").asBoolean()
+            || !metadata.path("capabilities").path("canEdit").asBoolean()
+            || !java.util.stream.StreamSupport.stream(metadata.path("parents").spliterator(), false)
+                .anyMatch(value -> parent.equals(value.asText()))) {
+            throw new java.io.IOException("Unexpected Drive JSON resource metadata");
+        }
+        String email = userInfo().path("email").asText("");
+        boolean ownedByCurrentUser = java.util.stream.StreamSupport
+            .stream(metadata.path("owners").spliterator(), false)
+            .anyMatch(owner -> owner.path("me").asBoolean()
+                || (!email.isBlank() && email.equalsIgnoreCase(owner.path("emailAddress").asText(""))));
+        if (!ownedByCurrentUser) throw new java.io.IOException("Drive JSON resource is not owned by the current user");
+    }
 }
