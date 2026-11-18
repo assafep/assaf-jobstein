@@ -4,14 +4,18 @@ import io.github.assafep.jobstein.config.AtomicFiles;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.Optional;
 
 public final class PosixFileSecretStore implements SecretStore {
     private static final String PREFIX = "secret://";
     private final Path root;
+    private final String currentUser;
 
     public PosixFileSecretStore(Path root) {
         this.root = root.toAbsolutePath().normalize();
+        this.currentUser = System.getProperty("user.name", "");
+        if(currentUser.isBlank())throw new IllegalStateException("Current user identity is unavailable");
     }
 
     private String[] segments(String reference) {
@@ -38,6 +42,7 @@ public final class PosixFileSecretStore implements SecretStore {
                 .equals(PosixFilePermissions.fromString("rwx------"))) {
             throw new IOException("Secret directory must be a real directory with mode 0700");
         }
+        ensureOwner(path);
     }
 
     private Optional<Path> resolve(String reference, boolean create) throws IOException {
@@ -58,6 +63,7 @@ public final class PosixFileSecretStore implements SecretStore {
                     .equals(PosixFilePermissions.fromString("rw-------"))) {
                 throw new IOException("Secret file must be a regular file with mode 0600");
             }
+            ensureOwner(file);
             // Permissions alone do not protect a credential exposed through another hard link.
             // Fail closed on filesystems that cannot establish exclusive link ownership.
             try {
@@ -70,6 +76,13 @@ public final class PosixFileSecretStore implements SecretStore {
             }
         }
         return Optional.of(file);
+    }
+
+    private void ensureOwner(Path path)throws IOException{
+        UserPrincipal owner;
+        try{owner=Files.getOwner(path,LinkOption.NOFOLLOW_LINKS);}
+        catch(UnsupportedOperationException|IllegalArgumentException e){throw new IOException("Secret ownership validation is unavailable",e);}
+        if(owner==null||!currentUser.equals(owner.getName()))throw new IOException("Secret path is not owned by the current user");
     }
 
     private boolean validateAncestors(boolean create) throws IOException {

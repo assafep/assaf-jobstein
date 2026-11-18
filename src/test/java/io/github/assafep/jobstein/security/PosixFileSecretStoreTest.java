@@ -85,4 +85,13 @@ class PosixFileSecretStoreTest {
         store.remove(reference);
         assertTrue(store.get(reference).isEmpty());
     }
+
+    @Test void createdCredentialPathsAreOwnedByCurrentUser() throws Exception {
+        var store = new PosixFileSecretStore(root.resolve("owned-secrets"));
+        store.put("secret://synthetic/token", new byte[]{1});
+        var expected = Files.getOwner(root);
+        assertEquals(expected.getName(), Files.getOwner(root.resolve("owned-secrets")).getName());
+        assertEquals(expected.getName(), Files.getOwner(root.resolve("owned-secrets/synthetic")).getName());
+        assertEquals(expected.getName(), Files.getOwner(root.resolve("owned-secrets/synthetic/token")).getName());
+    }
 }

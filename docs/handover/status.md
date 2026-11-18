@@ -82,3 +82,8 @@ The live application registry now verifies that reservation and transition profi
 
 ## Native Secret Service decision (2026-11-18; verified blocker)
 The Linux Secret Service adapter remains deliberately disabled. `secret-tool lookup` returns a nonzero status both for a missing entry and for some unavailable/failing keyring conditions, so the adapter cannot safely distinguish absence from backend failure. Enabling it would weaken fail-closed credential handling. Explicit backend selection continues to reject this experimental backend and refuses implicit fallback or migration. Synthetic coverage verifies namespace isolation, missing-entry failure, malformed output handling, command-output cleanup, and encoded-input cleanup; the full 77-test suite and sandbox smoke test pass, including CI for the preceding commit. No native keyring or real credential was accessed.
+
+## POSIX credential ownership audit (2026-11-18; locally validated, publication pending)
+The file credential backend now verifies that existing secret roots, nested secret directories, and credential files are owned by the current user, in addition to the existing mode, symlink, ancestor, and hard-link checks. Missing ownership metadata fails closed. Synthetic tests cover ownership of newly created paths; existing hard-link and ancestor safety tests remain green. This is local ownership validation under the single-writer model and does not prevent concurrent replacement races or provide encryption.
+
+`./gradlew --no-daemon test installDist --rerun-tasks` passed all 77 tests (zero failures/errors/skips), and `bash scripts/smoke-test.sh` passed with its final success marker. No real credentials were accessed; publication CI is pending.
