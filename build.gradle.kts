@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.bundling.AbstractArchiveTask
+import java.security.MessageDigest
+
 plugins { application; java }
 group = "io.github.assafep.jobstein"
 version = "0.1.0-SNAPSHOT"
@@ -13,3 +16,20 @@ dependencies {
 }
 application { mainClass.set("io.github.assafep.jobstein.cli.Jobstein") }
 tasks.test { useJUnitPlatform() }
+tasks.withType<AbstractArchiveTask>().configureEach {
+    isReproducibleFileOrder = true
+    isPreserveFileTimestamps = false
+}
+tasks.register("distributionChecksums") {
+    dependsOn("distZip", "distTar")
+    doLast {
+        val directory = layout.buildDirectory.dir("distributions").get().asFile
+        directory.listFiles { file -> file.extension == "zip" || file.extension == "tar" }
+            ?.sortedBy { it.name }
+            ?.forEach { archive ->
+                val digest = MessageDigest.getInstance("SHA-256").digest(archive.readBytes())
+                    .joinToString("") { byte -> "%02x".format(byte) }
+                archive.resolveSibling("${archive.name}.sha256").writeText("$digest  ${archive.name}\n")
+            }
+    }
+}

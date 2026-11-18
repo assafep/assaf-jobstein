@@ -74,6 +74,8 @@ The daemon criteria file includes Foojay download URLs for supported operating s
 bash scripts/smoke-test.sh
 ```
 
+To package and verify the portable distributions, run `bash scripts/verify-distribution.sh`. It builds the ZIP and TAR archives, writes SHA-256 sidecar files, verifies both checksums, extracts each archive into a temporary directory, and runs the CLI help command. Archive ordering and timestamps are normalized by Gradle for reproducible output. The script uses only synthetic data and does not touch Jobstein state. Remove an unpacked installation by deleting that unpacked distribution directory; user configuration and credentials remain outside the distribution under the environment state directory.
+
 See [architecture](docs/architecture.md). Never commit credentials, resumes or personal application data.
 
 ## Continue development with Codex

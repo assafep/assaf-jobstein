@@ -92,3 +92,8 @@ The file credential backend now verifies that existing secret roots, nested secr
 Workspace JSON responses are now bounded to 5 MB, preventing unbounded response buffering. Gmail message and Calendar event listings request at most 100 results per call. Existing read-only 401 retry behavior and no automatic mutation replay remain unchanged. Loopback tests cover oversized JSON rejection, listing limits, token refresh, retry exhaustion, and bounded binary downloads.
 
 `./gradlew --no-daemon test installDist --rerun-tasks` passed all 80 tests (zero failures/errors/skips), and `bash scripts/smoke-test.sh` passed with its final success marker. No live Workspace data was accessed; publication CI is pending.
+
+## Distribution packaging audit (2026-11-18; locally validated, publication pending)
+Gradle archive tasks now normalize file ordering and timestamps for reproducible ZIP/TAR output. `distributionChecksums` writes SHA-256 sidecars for both archives. `scripts/verify-distribution.sh` verifies both checksums, extracts each archive, and runs the CLI help command; it reports a clear Java 21 prerequisite because the packaged classes require Java 21. README documents packaging, checksum verification, and removal of unpacked distributions while keeping user state outside the distribution.
+
+`./gradlew --no-daemon test installDist --rerun-tasks` passed all 80 tests (zero failures/errors/skips), `bash scripts/smoke-test.sh` passed, and `JAVA_HOME=/home/k/.jdks/openjdk-21.0.2 bash scripts/verify-distribution.sh` passed. No personal state or credentials were packaged; publication CI is pending.
