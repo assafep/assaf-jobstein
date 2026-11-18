@@ -1,5 +1,6 @@
 package io.github.assafep.jobstein.environment;
 
+import io.github.assafep.jobstein.security.PrivateState;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
@@ -22,7 +23,7 @@ public final class EnvironmentService {
 
     public Path create(String name) throws IOException {
         Path dir = directory(name);
-        Files.createDirectories(dir);
+        PrivateState.directory(dir);
         Path config = dir.resolve("environment.properties");
         try {
             Files.writeString(config, "schemaVersion=1\nname=" + name + "\n",

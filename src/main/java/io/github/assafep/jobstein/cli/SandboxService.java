@@ -104,6 +104,7 @@ final class SandboxService {
             case "doctor" -> {
                 var report=new DoctorService().inspect(List.of(
                     new DoctorService.Probe("Local environment",()->environments.validate("sandbox")),
+                    new DoctorService.Probe("Local configuration permissions",()->repository.validate()),
                     new DoctorService.Probe("Onboarding checkpoint state",()->new ProvisioningStateRepository(new ConfigurationRepository(workspaceRoot.resolve("onboarding"))).validate()),
                     new DoctorService.Probe("SIMULATED Google project",()->requireFixture("mock-google-project")),
                     new DoctorService.Probe("SIMULATED OAuth",()->requireFixture("mock-google-auth")),

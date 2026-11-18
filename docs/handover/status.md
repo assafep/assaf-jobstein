@@ -103,3 +103,7 @@ Added a manual, opt-in development validation checklist with explicit disposable
 
 ## Doctor and onboarding checkpoint validation (2026-11-18; local validation pending publication CI)
 Doctor now validates the local onboarding checkpoint journal before provider probes. Validation is read-only and rejects unsupported checkpoint IDs, malformed state, and completed first-profile checkpoints without a persisted selection. A fixed diagnostic explains how to preserve and repair the affected local state; no checkpoint or remote Workspace resource is rewritten by doctor. README, sandbox instructions and architecture documentation describe the behavior. Targeted Java 21 tests passed; full suite, distribution build and sandbox smoke test remain required before publication.
+
+## Configuration permission audit (2026-11-18; local validation pending publication CI)
+Configuration doctor probes now audit the environment directory and existing YAML files for real-path, current-user ownership and owner-only POSIX permissions. Unsafe legacy files fail closed with a fixed repair diagnostic and remain unchanged; no implicit migration or permission rewrite was added. Synthetic coverage verifies a permissive legacy file is reported without modification. An explicit reviewed migration workflow remains open, and POSIX access control is not encryption.
+New environment directories are created owner-only so a fresh environment does not fail its first read-only audit.

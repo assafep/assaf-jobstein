@@ -16,7 +16,7 @@ jobstein profile list --env sandbox
 
 See [sandbox instructions](docs/sandbox.md). The simulated environment does not contact external services.
 
-`doctor` includes a read-only validation of the local onboarding checkpoint journal before it checks provider readiness. If that check fails, preserve the environment directory and follow the fixed repair guidance; doctor never rewrites checkpoints or remote Workspace state.
+`doctor` includes read-only validation of local configuration permissions and the onboarding checkpoint journal before it checks provider readiness. If either check fails, preserve the environment directory and follow the fixed repair guidance; doctor never rewrites legacy files, checkpoints or remote Workspace state.
 
 ## Live development testing (explicit opt-in)
 

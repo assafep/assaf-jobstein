@@ -27,6 +27,7 @@ public final class DiagnosticException extends IOException {
         GOOGLE_RESOURCE_MISSING("Google Workspace resource was not found. Inspect resource provisioning and permissions."),
         GOOGLE_REQUEST_REJECTED("Google Workspace rejected the request. Check the environment and resource state."),
         ONBOARDING_CHECKPOINT_INVALID("Onboarding checkpoint state is invalid. Preserve the local configuration, repair or remove only the affected checkpoint, then rerun onboard."),
+        LOCAL_CONFIGURATION_INVALID("Local configuration ownership or permissions are unsafe. Preserve the environment and repair the affected files explicitly before retrying."),
         GCP_APIS_MISSING("Required Google APIs are disabled. Run google configure."),
         GCP_COMMAND_FAILED("Google Cloud CLI operation failed. Check gcloud installation, authentication and project permissions."),
         GCP_TIMEOUT("Google Cloud CLI operation timed out. Check connectivity and retry."),

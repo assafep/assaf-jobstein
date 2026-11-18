@@ -7,6 +7,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public final class ConfigurationRepository {
     private final Path directory;
@@ -35,6 +36,21 @@ public final class ConfigurationRepository {
     }
 
     public void remove(String name)throws IOException{Files.deleteIfExists(path(name));}
+
+    /** Read-only audit of existing YAML configuration; legacy permissions are not rewritten implicitly. */
+    public void validate() throws IOException {
+        try {
+            io.github.assafep.jobstein.security.PrivateState.validateDirectory(directory);
+            if(Files.notExists(directory,LinkOption.NOFOLLOW_LINKS))return;
+            try(Stream<Path> files=Files.list(directory)){
+                for(Path file:files.filter(candidate->candidate.getFileName().toString().endsWith(".yaml")).toList())
+                    io.github.assafep.jobstein.security.PrivateState.validateFile(file);
+            }
+        } catch(IOException invalid) {
+            throw new io.github.assafep.jobstein.validation.DiagnosticException(
+                io.github.assafep.jobstein.validation.DiagnosticException.Code.LOCAL_CONFIGURATION_INVALID, invalid);
+        }
+    }
 
     public <T> void save(String name, T configuration) throws IOException {
         java.util.Objects.requireNonNull(configuration);

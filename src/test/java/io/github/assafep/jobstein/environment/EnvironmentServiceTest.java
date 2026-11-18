@@ -3,6 +3,8 @@ package io.github.assafep.jobstein.environment;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.attribute.PosixFilePermissions;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EnvironmentServiceTest {
@@ -16,6 +18,7 @@ class EnvironmentServiceTest {
         service.create("production");
         assertEquals(java.util.List.of("development", "production"), service.list());
         assertNotEquals(service.validate("production"), service.validate("development"));
+        assertEquals(PosixFilePermissions.fromString("rwx------"),Files.getPosixFilePermissions(root.resolve("production")));
     }
 
     @Test void rejectsTraversal() {

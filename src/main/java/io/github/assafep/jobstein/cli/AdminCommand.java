@@ -150,6 +150,7 @@ final class AdminCommand implements Callable<Integer> {
         var doctor=new io.github.assafep.jobstein.validation.DoctorService();
         var report=doctor.inspect(List.of(
             new io.github.assafep.jobstein.validation.DoctorService.Probe("Local environment",()->environments.validate(env)),
+            new io.github.assafep.jobstein.validation.DoctorService.Probe("Local configuration permissions",()->config.validate()),
             new io.github.assafep.jobstein.validation.DoctorService.Probe("Onboarding checkpoint state",()->new io.github.assafep.jobstein.provisioning.ProvisioningStateRepository(config).validate()),
             new io.github.assafep.jobstein.validation.DoctorService.Probe("GCP project and enabled APIs",()->new GcloudClient().verify(google().projectId())),
             new io.github.assafep.jobstein.validation.DoctorService.Probe("Google OAuth and Workspace read access",()->new WorkspaceClient(oauth()).validate()),
