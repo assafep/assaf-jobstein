@@ -117,3 +117,5 @@ The recent administrative audits are now publication-verified: seed identity (44
 On 2026-11-19 the owner closed native credential migration for the current scope and deferred licensing and release. The DevLoop source is available in a separate checkout.
 
 Live review-only DevLoop trials verified both the `no-work` and staged-change paths on 2026-11-19. The controlled retry used the runner's exact-commit CI result, passed `./gradlew --no-daemon test installDist`, and paused in `review` with only the synthetic fixture staged and `auto_push=false`. See [the DevLoop handover](devloop.md) for the verification details.
+
+DevLoop `0bd926e` also passed the live trial using its built-in CI handoff. The agent used the runner's exact-commit result, Gradle passed, and the trial paused in `review` with only the fixture staged and `auto_push=false`.
