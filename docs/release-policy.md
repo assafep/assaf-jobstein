@@ -4,7 +4,7 @@ Jobstein is currently a pre-release administrative foundation. The Gradle projec
 
 ## Versioning
 
-- Keep the version in `build.gradle.kts` as the single source for the CLI and Gradle distributions.
+- Set the distribution version in `build.gradle.kts` and keep the CLI version in `Jobstein.java` in sync. Verify the unpacked launcher with `jobstein --version`.
 - Use semantic-version-style `MAJOR.MINOR.PATCH` values for published releases. Increment the major version for incompatible CLI, persisted-state, or supported-environment changes; increment minor for backward-compatible capabilities; increment patch for compatible fixes.
 - Remove `-SNAPSHOT` only in a reviewed release commit. The release commit must pass the full Java 21 test suite, `installDist`, the credential-free smoke test, and the reproducible distribution/checksum verifier.
 - Publish only from an exact CI-green commit on the protected main branch. Record the commit SHA and SHA-256 sidecars with the release notes.

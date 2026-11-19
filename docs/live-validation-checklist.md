@@ -9,23 +9,24 @@ This checklist is for a manually authorized development-environment run. It does
 - Confirm the Google account and GCP project are disposable and that billing limits are understood.
 - Confirm OAuth client JSON, refresh tokens, AI credentials, and local state are outside Git and outside Drive.
 - Run `./gradlew test installDist` and `bash scripts/smoke-test.sh`.
+- Complete [live onboarding](onboarding.md#set-up-a-live-environment) for the development environment. Use an existing configured environment when repeating validation.
 - Run `bash scripts/live-preflight.sh` and resolve every failed check.
 
 ## Authorized run
 
-Run only after the preconditions pass:
+After the preconditions pass, run the guarded script.
 
 ```sh
 JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh --confirm-development development
 ```
 
-The guarded script performs read and validation operations for environment, Google, AI, user state, profile state, and doctor checks. It does not generate descriptors, send mail, submit applications, or create remote resources. If a separate manual onboarding run is needed, obtain explicit consent for AI resume processing and review the descriptor before activation.
+The guarded script performs read and validation operations for environment, Google, AI, user state, profile state, and doctor checks. It does not generate descriptors, send mail, submit applications, or create remote resources.
 
 ## After the run
 
 - Record only pass/fail outcomes and sanitized diagnostic codes.
-- Revoke the disposable OAuth grant and remove the disposable GCP project/resources manually when finished.
-- Remove local live state and credential references using the environment’s documented cleanup procedure.
+- Revoke the disposable OAuth grant and clean up the disposable GCP project and user-owned Drive files separately.
+- After revoking access and preserving any required test evidence, remove only the disposable development environment directory and its downloaded OAuth client. Verify the paths first.
 - Never commit logs, OAuth URLs, account addresses, project IDs, Drive IDs, resume text, tokens, or provider responses.
 
 ## Redacted evidence template
