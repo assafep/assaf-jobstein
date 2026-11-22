@@ -10,9 +10,30 @@ for tool in java gcloud; do
     failed=1
   fi
 done
+check_java_21() {
+  local label="$1" java_command="$2" version
+  version=$("$java_command" -version 2>&1 | head -n 1)
+  if [[ "$version" =~ \"21([.\"]|-) ]]; then
+    echo "PASS $label Java 21"
+  else
+    echo "FAIL $label Java 21 required (detected: ${version:-unknown})"
+    failed=1
+  fi
+}
+
+bundled_java=./build/install/jobstein/runtime/bin/java
+if [[ -x "$bundled_java" ]]; then
+  check_java_21 'Bundled' "$bundled_java"
+else
+  echo "FAIL Bundled Java 21 runtime missing ($bundled_java)"
+  failed=1
+fi
+
 if command -v java >/dev/null 2>&1; then
-  version=$(java -version 2>&1 | head -n 1)
-  if [[ "$version" =~ \"21([.\"]|-) ]]; then echo 'PASS JDK 21'; else echo 'FAIL JDK 21 required'; failed=1; fi
+  host_version=$(java -version 2>&1 | head -n 1)
+  echo "INFO Host Java: ${host_version:-unknown} (the bundled runtime is used by Jobstein)"
+else
+  echo 'INFO Host Java not installed (the bundled runtime is used by Jobstein)'
 fi
 if [[ -x ./build/install/jobstein/bin/jobstein ]]; then
   echo 'PASS Jobstein distribution built'
