@@ -37,6 +37,16 @@ class JobsteinTest {
         var cli = new picocli.CommandLine(new EnvironmentCommand(environments, "current"));
         cli.setOut(new PrintWriter(output, true));
         assertEquals(0, cli.execute("--env", "development"));
-        assertEquals("Environment: development\nGCP project: proj-jobstein-dev-515517\n", output.toString());
+        assertEquals("Environment: development\nType: live\nGCP project: proj-jobstein-dev-515517\n", output.toString());
+    }
+
+    @Test void currentClassifiesSandboxWithoutProject() throws Exception {
+        var environments=new EnvironmentService(root.resolve("environments"));
+        environments.create("sandbox");
+        var output=new StringWriter();
+        var cli=new picocli.CommandLine(new EnvironmentCommand(environments,"current"));
+        cli.setOut(new PrintWriter(output,true));
+        assertEquals(0,cli.execute("--env","sandbox"));
+        assertEquals("Environment: sandbox\nType: sandbox\nGCP project: (not configured)\n",output.toString());
     }
 }

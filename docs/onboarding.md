@@ -81,7 +81,7 @@ Use a disposable Google account and development project for the first test. Live
    jobstein environment current --env development
    ```
 
-   This prints the selected environment and bound `GCP project`. Use the same `--env development` value on later commands.
+   This prints the selected environment, its `Type` (`live`, `sandbox`, or `production`), and bound `GCP project`. A name other than `sandbox` or `production` is classified as `live`. Use the same `--env development` value on later commands.
 
 4. Authorize the Workspace account in the browser. This grant binds user-owned files to an account separately from the gcloud login. For the consent screen, the scopes are `openid`, `userinfo.email`, `drive.file`, `gmail.readonly`, `gmail.compose` and `calendar.events.readonly`. For a remote terminal, set up the tunnel below first.
 5. Choose the xAI model and enter credentials at the masked prompt. The runtime validates the default integration, then asks for the applicant's name and initializes the user and first role profile.

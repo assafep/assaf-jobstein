@@ -36,6 +36,7 @@ final class EnvironmentCommand implements Callable<Integer> {
                     service.validate(environment);
                     var google = new ConfigurationRepository(service.directory(environment)).load("google", GoogleSettings.class);
                     out.println("Environment: " + environment);
+                    out.println("Type: " + type(environment));
                     out.println("GCP project: " + google.map(GoogleSettings::projectId).orElse("(not configured)"));
                 }
                 default -> throw new IllegalStateException("Unknown environment operation");
@@ -47,5 +48,11 @@ final class EnvironmentCommand implements Callable<Integer> {
             spec.commandLine().getErr().println(e.getMessage());
             return 1;
         }
+    }
+
+    private static String type(String name) {
+        if ("sandbox".equals(name)) return "sandbox";
+        if ("production".equals(name)) return "production";
+        return "live";
     }
 }
