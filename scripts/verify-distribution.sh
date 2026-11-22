@@ -2,12 +2,6 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-java_version=$(java -version 2>&1 | awk -F'[".]' '/version/ {print ($2 == "1" ? $3 : $2); exit}')
-if [[ -z "$java_version" || "$java_version" -lt 21 ]]; then
-  echo "Java 21 or newer is required to launch the distribution (detected Java ${java_version:-unknown})" >&2
-  exit 1
-fi
-
 ./gradlew --no-daemon distZip distTar distributionChecksums
 archives=(build/distributions/*.zip build/distributions/*.tar)
 if ((${#archives[@]} != 2)); then
@@ -29,6 +23,12 @@ for extracted in "$verification_root/zip" "$verification_root/tar"; do
     echo "Distribution is missing the jobstein launcher: $extracted" >&2
     exit 1
   fi
-  "$cli" --help >/dev/null
+  runtime=$(dirname "$(dirname "$cli")")/runtime/bin/java
+  if [[ ! -x "$runtime" ]]; then
+    echo "Distribution is missing its executable Java runtime: $runtime" >&2
+    exit 1
+  fi
+  # Prove the launcher uses the bundled runtime, even when host Java is unavailable.
+  env -u JAVA_HOME PATH=/usr/bin:/bin "$cli" --version >/dev/null
 done
 echo 'PASS: reproducible distributions and checksums verified'

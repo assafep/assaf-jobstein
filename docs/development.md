@@ -13,7 +13,7 @@ bash scripts/smoke-test.sh
 
 The smoke test uses a temporary home directory and deliberately triggers failures to test recovery. A passing run exits with code 0 and ends with `PASS: all sandbox smoke checks completed`. CI also verifies distributions and live-script opt-in guards. Authenticated provider testing has a separate [live validation checklist](live-validation-checklist.md).
 
-The wrapper selects the pinned Gradle version. The Java toolchain and daemon criteria select Java 21 for builds. The first build needs network access for dependencies and may provision a JDK in the user's Gradle cache. The installed CLI and shell scripts also need Java 21 in the shell. Set `JAVA_HOME` to the JDK directory and add its `bin` directory to `PATH`.
+The wrapper selects the pinned Gradle version. The Java toolchain and daemon criteria select Java 21 for builds. The first build needs network access for dependencies and may provision a JDK in the user's Gradle cache. `installDist`, `distZip`, and `distTar` use that toolchain's `jlink` to include a compressed Java 21 runtime under `runtime/`. The generated launchers prefer this bundled runtime, so an installed distribution does not require Java 21 on the host. `JAVA_HOME` and `PATH` remain fallbacks for development and older/custom distributions.
 
 ## Windows with WSL 2
 
@@ -35,4 +35,4 @@ Run the build and test commands above in Ubuntu. Put the two export lines in `~/
 
 ## Packages
 
-Run `bash scripts/verify-distribution.sh` to build the ZIP and TAR files under `build/distributions/`, verify their SHA-256 sidecars, and run CLI help from both extracted archives. To install locally, extract an archive and use its `bin/jobstein` launcher with Java 21. Remove the extracted directory to uninstall the launcher. User state lives separately under `~/.config/jobstein/environments/`. See the [release policy](release-policy.md) before publishing.
+Run `bash scripts/verify-distribution.sh` to build the ZIP and TAR files under `build/distributions/`, verify their SHA-256 sidecars, and run both extracted launchers with their bundled Java runtime. To install locally, extract an archive and use its `bin/jobstein` launcher; Java 21 does not need to be installed separately. Remove the extracted directory to uninstall the launcher. User state lives separately under `~/.config/jobstein/environments/`. See the [release policy](release-policy.md) before publishing.
