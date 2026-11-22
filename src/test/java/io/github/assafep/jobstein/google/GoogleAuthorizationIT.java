@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.atomic.*;
+import java.time.Duration;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GoogleAuthorizationIT {
@@ -26,6 +27,44 @@ class GoogleAuthorizationIT {
             result.put(URLDecoder.decode(parts[0],StandardCharsets.UTF_8),URLDecoder.decode(parts[1],StandardCharsets.UTF_8));
         }
         return result;
+    }
+    private static void client(PosixFileSecretStore secrets)throws Exception{
+        secrets.put("secret://google/client",bytes("{\"client_id\":\"synthetic-client\",\"client_secret\":\"synthetic-secret\"}"));
+    }
+
+    @Test void reportsAuthorizationDenied()throws Exception{
+        var secrets=new PosixFileSecretStore(root.resolve("secrets")); client(secrets);
+        try(var server=new MockHttp(exchange->{ fail("Token endpoint must not be called"); })){
+            var oauth=new GoogleOAuth(secrets,server.origin());
+            var error=assertThrows(DiagnosticException.class,()->oauth.authorize(url->{
+                var auth=parameters(URI.create(url).getRawQuery());
+                try{var connection=(HttpURLConnection)URI.create(auth.get("redirect_uri")+"?state="+auth.get("state")+"&error=access_denied").toURL().openConnection(); connection.getResponseCode();}
+                catch(Exception e){throw new AssertionError(e);}
+            },Optional.empty(),0,Duration.ofSeconds(1)));
+            assertEquals(DiagnosticException.Code.GOOGLE_AUTH_DENIED,error.code());
+        }
+    }
+
+    @Test void reportsCallbackTimeout()throws Exception{
+        var secrets=new PosixFileSecretStore(root.resolve("secrets")); client(secrets);
+        try(var server=new MockHttp(exchange->{ fail("Token endpoint must not be called"); })){
+            var oauth=new GoogleOAuth(secrets,server.origin());
+            var error=assertThrows(DiagnosticException.class,()->oauth.authorize(url->{},Optional.empty(),0,Duration.ofMillis(10)));
+            assertEquals(DiagnosticException.Code.GOOGLE_AUTH_TIMEOUT,error.code());
+        }
+    }
+
+    @Test void reportsTokenExchangeFailure()throws Exception{
+        var secrets=new PosixFileSecretStore(root.resolve("secrets")); client(secrets);
+        try(var server=new MockHttp(exchange->MockHttp.reply(exchange,400,"{\"error\":\"invalid_grant\"}"))){
+            var oauth=new GoogleOAuth(secrets,server.origin());
+            var error=assertThrows(DiagnosticException.class,()->oauth.authorize(url->{
+                var auth=parameters(URI.create(url).getRawQuery());
+                try{var connection=(HttpURLConnection)URI.create(auth.get("redirect_uri")+"?state="+auth.get("state")+"&code=synthetic-code").toURL().openConnection(); connection.getResponseCode();}
+                catch(Exception e){throw new AssertionError(e);}
+            },Optional.empty(),0,Duration.ofSeconds(1)));
+            assertEquals(DiagnosticException.Code.GOOGLE_TOKEN_EXCHANGE_FAILED,error.code());
+        }
     }
     @Test void verifiesPkceAndPreservesExistingTokenOnAccountMismatch()throws Exception{
         var secrets=new PosixFileSecretStore(root.resolve("secrets"));

@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.AccessDeniedException;
 import java.util.function.Consumer;
+import java.util.concurrent.TimeoutException;
 import io.github.assafep.jobstein.validation.DiagnosticException;
 
 public final class GoogleOAuth {
@@ -89,6 +90,9 @@ public final class GoogleOAuth {
     public void authorize(Consumer<String> display) throws Exception {authorize(display,Optional.empty());}
     public void authorize(Consumer<String> display,Optional<String> expectedSubject) throws Exception {authorize(display,expectedSubject,0);}
     public synchronized void authorize(Consumer<String> display,Optional<String> expectedSubject,int callbackPort) throws Exception {
+        authorize(display,expectedSubject,callbackPort,Duration.ofMinutes(5));
+    }
+    synchronized void authorize(Consumer<String> display,Optional<String> expectedSubject,int callbackPort,Duration callbackTimeout) throws Exception {
         var client=client(); String verifier=random(), state=random();
         String challenge=Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(verifier.getBytes(StandardCharsets.US_ASCII)));
         HttpServer server=HttpServer.create(LoopbackCallback.address(callbackPort),0);
@@ -100,7 +104,7 @@ public final class GoogleOAuth {
                 var callback=LoopbackCallback.parse(exchange.getRequestMethod(),exchange.getRequestURI(),state);
                 if(callback.isPresent()){
                     var received=callback.get();
-                    if(received.denied())result.completeExceptionally(new IOException("Google authorization denied"));
+                    if(received.denied())result.completeExceptionally(new DiagnosticException(DiagnosticException.Code.GOOGLE_AUTH_DENIED));
                     else if(result.complete(received.code())){status=200;message="Authorization received. Return to Jobstein.";}
                 }
                 exchange.getResponseHeaders().set("Cache-Control","no-store");
@@ -117,9 +121,18 @@ public final class GoogleOAuth {
                 "client_id",required(client,"client_id"),"redirect_uri",redirect,"response_type","code","scope",SCOPES,
                 "access_type","offline","prompt","consent","state",state,"code_challenge",challenge,"code_challenge_method","S256"));
             display.accept(url);
-            String code=result.get(5,TimeUnit.MINUTES);
-            JsonNode token=exchange(Map.of("client_id",required(client,"client_id"),"client_secret",required(client,"client_secret"),
-                "code",code,"code_verifier",verifier,"redirect_uri",redirect,"grant_type","authorization_code"));
+            String code;
+            try { code=result.get(callbackTimeout.toMillis(),TimeUnit.MILLISECONDS); }
+            catch(TimeoutException e){throw new DiagnosticException(DiagnosticException.Code.GOOGLE_AUTH_TIMEOUT,e);}
+            catch(ExecutionException e){
+                if(e.getCause() instanceof DiagnosticException diagnostic)throw diagnostic;
+                throw new DiagnosticException(DiagnosticException.Code.GOOGLE_AUTH_FAILED,e.getCause());
+            }
+            JsonNode token;
+            try {
+                token=exchange(Map.of("client_id",required(client,"client_id"),"client_secret",required(client,"client_secret"),
+                    "code",code,"code_verifier",verifier,"redirect_uri",redirect,"grant_type","authorization_code"));
+            } catch(IOException e){throw new DiagnosticException(DiagnosticException.Code.GOOGLE_TOKEN_EXCHANGE_FAILED,e);}
             Set<String> granted=Set.copyOf(Arrays.asList(required(token,"scope").split(" ")));
             var requiredScopes=Arrays.stream(SCOPES.split(" ")).filter(s->s.startsWith("https://") && !s.endsWith("userinfo.email")).toList();
             if(!granted.containsAll(requiredScopes)) throw new IOException("Required Google permissions were not granted");

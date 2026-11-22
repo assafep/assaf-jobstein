@@ -97,7 +97,8 @@ final class AdminCommand implements Callable<Integer> {
         if(oauthClient!=null)oauth().importClient(oauthClient,google().projectId());
         var expected=config.load("user",io.github.assafep.jobstein.domain.JobsteinUser.class).map(io.github.assafep.jobstein.domain.JobsteinUser::googleAccountSubject);
         oauth().authorize(this::browser,expected,callbackPort);
-        new WorkspaceClient(oauth()).validate();
+        try { new WorkspaceClient(oauth()).validate(); }
+        catch(Exception e){ throw new DiagnosticException(DiagnosticException.Code.GOOGLE_WORKSPACE_VALIDATION_FAILED,e); }
     }
     private void configureAi(boolean update,boolean defaultBinding)throws Exception{
         var service=ai();
