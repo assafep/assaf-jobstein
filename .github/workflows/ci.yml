@@ -8,6 +8,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # Prevent Git's default-branch hint while checkout initializes the workspace.
+      - name: Configure Git default branch
+        run: git config --global init.defaultBranch main
       # Use the Node.js 24-compatible checkout action to avoid the runner's
       # Node.js 20 deprecation warning.
       - uses: actions/checkout@v7
