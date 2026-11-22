@@ -8,11 +8,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      # Use the Node.js 24-compatible checkout action to avoid the runner's
+      # Node.js 20 deprecation warning.
       - uses: actions/checkout@v7
+      # setup-java v5 is the supported Java 21 setup action requested for CI.
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
+      # Keep Gradle setup on its Node.js 24-compatible action major as well.
       - uses: gradle/actions/setup-gradle@v6
       - run: ./gradlew --no-daemon test installDist
 
