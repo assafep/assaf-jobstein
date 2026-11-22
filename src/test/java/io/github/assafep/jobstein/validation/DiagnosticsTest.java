@@ -19,4 +19,10 @@ class DiagnosticsTest {
         assertEquals(DiagnosticException.Code.GOOGLE_RESOURCE_MISSING,Diagnostics.googleHttp(404));
         assertEquals(DiagnosticException.Code.GOOGLE_UNAVAILABLE,Diagnostics.googleHttp(503));
     }
+
+    @Test void describesOAuthClientProjectMismatch(){
+        var diagnostic=new DiagnosticException(DiagnosticException.Code.GOOGLE_OAUTH_CLIENT_MISMATCH);
+        assertTrue(Diagnostics.describe(diagnostic).contains("different Google Cloud project"));
+        assertTrue(Diagnostics.describe(diagnostic).startsWith("[GOOGLE_OAUTH_CLIENT_MISMATCH]"));
+    }
 }

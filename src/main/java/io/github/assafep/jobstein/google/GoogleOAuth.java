@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.AccessDeniedException;
 import java.util.function.Consumer;
+import io.github.assafep.jobstein.validation.DiagnosticException;
 
 public final class GoogleOAuth {
     private static final String CLIENT = "secret://google/client";
@@ -40,9 +41,10 @@ public final class GoogleOAuth {
         if (!Files.isReadable(path))
             throw new AccessDeniedException(path.toString());
         JsonNode client = JSON.readTree(path.toFile()).path("installed");
-        if (!client.path("client_id").isTextual() || !client.path("client_secret").isTextual()
-            || !expectedProject.equals(client.path("project_id").asText()))
-            throw new IOException("Expected desktop OAuth client for selected GCP project");
+        if (!client.path("client_id").isTextual() || !client.path("client_secret").isTextual())
+            throw new IOException("Expected desktop OAuth client JSON");
+        if (!expectedProject.equals(client.path("project_id").asText()))
+            throw new DiagnosticException(DiagnosticException.Code.GOOGLE_OAUTH_CLIENT_MISMATCH);
         if (secrets.get(REFRESH).isPresent()) {
             var previous = secrets.get(CLIENT);
             if (previous.isEmpty() || !JSON.readTree(previous.get()).path("client_id").asText().equals(client.path("client_id").asText()))
