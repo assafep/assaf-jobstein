@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Purpose: run explicitly authorized read-only checks against a development environment.
+# Used by: developers following the live validation checklist; never CI by default.
+# Lifecycle: live validation, after onboarding and preflight, before release evidence.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # Never default to live execution. No creation, mail sending, or AI generation.

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Purpose: check tools and the bundled runtime before live validation.
+# Used by: developers and the live-smoke-test.sh operator workflow.
+# Lifecycle: preflight, after building a distribution and before external reads.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 failed=0

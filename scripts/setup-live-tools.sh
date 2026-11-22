@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Purpose: install the Google Cloud CLI prerequisites on supported Debian/Ubuntu hosts.
+# Used by: developers preparing a disposable live-validation workstation.
+# Lifecycle: setup, before gcloud authentication and live preflight; it does not authenticate.
 set -euo pipefail
 # Explicit opt-in. No authentication or project creation in this script.
 if command -v gcloud >/dev/null 2>&1; then

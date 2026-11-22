@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Purpose: exercise sandbox recovery, profiles, integrations and state commands end to end.
+# Used by: developers and CI as a credential-free regression check.
+# Lifecycle: verification, after installDist and before distribution or live validation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 home=$(mktemp -d)

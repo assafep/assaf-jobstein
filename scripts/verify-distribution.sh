@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Purpose: build, checksum and execute both packaged distribution formats.
+# Used by: developers and CI before publishing a release archive.
+# Lifecycle: packaging verification, after tests and before release or installation.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

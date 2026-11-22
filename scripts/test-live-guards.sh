@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Purpose: verify that live validation rejects missing or unsafe opt-in arguments.
+# Used by: developers and CI to protect against accidental external operations.
+# Lifecycle: verification, alongside shell checks before accepting a build.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 expect_rejection(){
