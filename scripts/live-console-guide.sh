@@ -4,14 +4,76 @@
 # Lifecycle: manual setup, between gcloud preflight and the jobstein onboard command.
 set -euo pipefail
 
-if [[ $# != 1 || -z "$1" ]]; then
-  echo "Usage: bash scripts/live-console-guide.sh PROJECT_ID" >&2
-  exit 2
+authuser=''
+project_arg=''
+while (($#)); do
+  case "$1" in
+    --authuser)
+      if (( $# < 2 )) || [[ -z "$2" ]]; then
+        echo 'Usage: bash scripts/live-console-guide.sh [--authuser ACCOUNT_OR_INDEX] [PROJECT_ID]' >&2
+        exit 2
+      fi
+      authuser=$2
+      shift 2
+      ;;
+    --*)
+      echo "Unknown option: $1" >&2
+      exit 2
+      ;;
+    *)
+      if [[ -n "$project_arg" ]]; then
+        echo 'Only one PROJECT_ID may be provided.' >&2
+        exit 2
+      fi
+      project_arg=$1
+      shift
+      ;;
+  esac
+done
+
+if [[ -n "$project_arg" ]]; then
+  project_id=$project_arg
+else
+  if ! command -v gcloud >/dev/null 2>&1; then
+    echo 'gcloud is required when PROJECT_ID is omitted.' >&2
+    exit 1
+  fi
+  mapfile -t projects < <(gcloud projects list --format='value(projectId)')
+  if ((${#projects[@]} == 0)); then
+    echo 'No accessible Google Cloud projects found.' >&2
+    exit 1
+  fi
+  echo 'Choose the Google Cloud project for live onboarding:'
+  for index in "${!projects[@]}"; do
+    printf '  %d) %s\n' "$((index + 1))" "${projects[$index]}"
+  done
+  read -r -p 'Project number: ' selection
+  if [[ ! "$selection" =~ ^[0-9]+$ ]] || ((selection < 1 || selection > ${#projects[@]})); then
+    echo 'Invalid project selection.' >&2
+    exit 2
+  fi
+  project_id=${projects[$((selection - 1))]}
 fi
 
-project_id=$1
-branding_url="https://console.cloud.google.com/auth/branding?project=${project_id}"
-clients_url="https://console.cloud.google.com/auth/clients?project=${project_id}"
+if [[ -z "$authuser" ]]; then
+  if ! command -v gcloud >/dev/null 2>&1; then
+    echo 'gcloud is required to determine the active account when --authuser is omitted.' >&2
+    exit 1
+  fi
+  authuser=$(gcloud auth list --filter=status:ACTIVE --format='value(account)' | head -n 1)
+fi
+if [[ -z "$authuser" ]]; then
+  echo 'No active gcloud account found; pass --authuser ACCOUNT_OR_INDEX explicitly.' >&2
+  exit 1
+fi
+
+# Console accepts an account email or browser account index as authuser.
+encoded_authuser=${authuser//@/%40}
+encoded_authuser=${encoded_authuser//+/%2B}
+echo "Using Google Cloud project: $project_id"
+echo "Using Google account: $authuser"
+branding_url="https://console.cloud.google.com/auth/branding?project=${project_id}&authuser=${encoded_authuser}"
+clients_url="https://console.cloud.google.com/auth/clients?project=${project_id}&authuser=${encoded_authuser}"
 
 open_link() {
   local url=$1

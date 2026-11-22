@@ -30,16 +30,29 @@ Use a disposable Google account and development project for the first test. Live
 2. Choose the environment and GCP project. Use one project per live environment. From the repository root, start the guided browser sequence with your project ID:
 
    ```bash
-   bash scripts/live-console-guide.sh YOUR_TEST_PROJECT
+   bash scripts/live-console-guide.sh
    ```
 
-   The script prints the Auth Platform and Credentials links in order and pauses between them. The following console work is manual and must be completed in a browser:
+   The script lists projects returned by `gcloud projects list` and lets you choose one. It appends the active account from `gcloud auth list` as `authuser` to both links. You may pass a project ID explicitly, or override the account selection when the browser’s account order differs:
+
+   ```bash
+   bash scripts/live-console-guide.sh PROJECT_ID
+   bash scripts/live-console-guide.sh --authuser 1 PROJECT_ID
+   ```
+
+   The `--authuser` value may be a browser account index such as `1` or the active account email. The script then prints the Auth Platform and Credentials links in order and pauses between them. The following console work is manual and must be completed in a browser:
 
    - In **Google Auth Platform**, configure the app branding and support email, choose the audience, add the disposable account as a test user, and configure the requested scopes. The required scopes are listed again in step 4. Use fictional or disposable values while developing.
 
      ![Illustrative Google Auth Platform branding screen](images/onboarding/auth-platform-branding-illustration.png)
 
      *Illustrative mockup only. Console labels and navigation may differ; do not enter real credentials into documentation examples.*
+
+     On the **Audience** page, choose the appropriate audience, add the disposable Google account under **Test users**, and save the change:
+
+     ![Illustrative Google Auth Platform audience test-user screen](images/onboarding/auth-platform-audience-test-user-illustration.png)
+
+     *Illustrative mockup only. Use the actual disposable account you control; the addresses shown here are fictional.*
 
    - In **Credentials**, create an OAuth client with application type **Desktop app**, then download the client JSON. Store that file outside the checkout and do not commit it or place it in Drive.
 
