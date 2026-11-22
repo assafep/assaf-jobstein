@@ -43,7 +43,26 @@ public final class DiagnosticException extends IOException {
         public String guidance(){return guidance;}
     }
     private final Code code;
-    public DiagnosticException(Code code){super(Objects.requireNonNull(code).guidance());this.code=code;}
-    public DiagnosticException(Code code,Throwable cause){super(Objects.requireNonNull(code).guidance(),cause);this.code=code;}
+    private final String detail;
+    public DiagnosticException(Code code){this(code,null,null);}
+    public DiagnosticException(Code code,Throwable cause){this(code,null,cause);}
+    private DiagnosticException(Code code,String detail,Throwable cause){super(message(code,detail),cause);this.code=Objects.requireNonNull(code);this.detail=detail;}
+    public static DiagnosticException oauthTokenExchange(String error){
+        String safe=switch(error==null?"":error){
+            case "invalid_grant" -> "invalid_grant: the authorization code is expired, already used, or was issued for a different client. Retry the browser authorization with the downloaded OAuth client.";
+            case "invalid_client" -> "invalid_client: Google rejected the OAuth client. Re-download the Desktop OAuth JSON and retry.";
+            case "redirect_uri_mismatch" -> "redirect_uri_mismatch: the OAuth client does not allow the loopback callback. Use a Desktop OAuth client from the selected project.";
+            case "unauthorized_client" -> "unauthorized_client: this OAuth client is not allowed for the requested flow. Use a Desktop OAuth client and retry.";
+            case "invalid_scope" -> "invalid_scope: the requested scopes are not allowed. Review Auth Platform scopes and retry.";
+            case "" -> "Google returned no OAuth error code. Verify the OAuth client and retry.";
+            default -> "Google returned OAuth error '"+errorCode(error)+"'. Verify the OAuth client and retry.";
+        };
+        return new DiagnosticException(Code.GOOGLE_TOKEN_EXCHANGE_FAILED,safe,null);
+    }
+    private static String errorCode(String value){
+        if(value==null||!value.matches("[a-z][a-z0-9_.-]{0,63}"))return "unknown";
+        return value;
+    }
+    private static String message(Code code,String detail){return detail==null?Objects.requireNonNull(code).guidance():code.guidance()+" Suggested fix: "+detail;}
     public Code code(){return code;}
 }

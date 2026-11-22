@@ -9,7 +9,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 public final class Diagnostics {
     private Diagnostics(){}
     public static String describe(Exception error){
-        if(error instanceof DiagnosticException known)return "["+known.code().name()+"] "+known.code().guidance();
+        if(error instanceof DiagnosticException known)return "["+known.code().name()+"] "+known.getMessage();
         if(error instanceof io.github.assafep.jobstein.google.WorkspaceClient.WorkspaceHttpException http){var code=googleHttp(http.status());return "["+code.name()+"] "+code.guidance();}
         if(error instanceof AccessDeniedException)return "[LOCAL_ACCESS_DENIED] Check ownership and permissions of local Jobstein state.";
         if(error instanceof NoSuchFileException)return "[LOCAL_FILE_MISSING] Check required local files and environment initialization.";

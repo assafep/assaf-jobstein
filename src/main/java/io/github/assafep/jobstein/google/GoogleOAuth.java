@@ -79,7 +79,11 @@ public final class GoogleOAuth {
         var response = http.send(HttpRequest.newBuilder(tokenEndpoint)
             .timeout(Duration.ofSeconds(40)).header("Content-Type","application/x-www-form-urlencoded")
             .POST(HttpRequest.BodyPublishers.ofString(form(fields))).build(),HttpResponse.BodyHandlers.ofString());
-        if(response.statusCode()!=200) throw new IOException("Google token endpoint rejected request (HTTP "+response.statusCode()+")");
+        if(response.statusCode()!=200){
+            String error="";
+            try{error=JSON.readTree(response.body()).path("error").asText("");}catch(IOException ignored){}
+            throw DiagnosticException.oauthTokenExchange(error);
+        }
         return JSON.readTree(response.body());
     }
     private static String required(JsonNode node,String key) throws IOException {
@@ -132,7 +136,10 @@ public final class GoogleOAuth {
             try {
                 token=exchange(Map.of("client_id",required(client,"client_id"),"client_secret",required(client,"client_secret"),
                     "code",code,"code_verifier",verifier,"redirect_uri",redirect,"grant_type","authorization_code"));
-            } catch(IOException e){throw new DiagnosticException(DiagnosticException.Code.GOOGLE_TOKEN_EXCHANGE_FAILED,e);}
+            } catch(IOException e){
+                if(e instanceof DiagnosticException diagnostic)throw diagnostic;
+                throw new DiagnosticException(DiagnosticException.Code.GOOGLE_TOKEN_EXCHANGE_FAILED,e);
+            }
             Set<String> granted=Set.copyOf(Arrays.asList(required(token,"scope").split(" ")));
             var requiredScopes=Arrays.stream(SCOPES.split(" ")).filter(s->s.startsWith("https://") && !s.endsWith("userinfo.email")).toList();
             if(!granted.containsAll(requiredScopes)) throw new IOException("Required Google permissions were not granted");

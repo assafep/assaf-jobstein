@@ -15,6 +15,7 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 import java.time.Duration;
 import static org.junit.jupiter.api.Assertions.*;
+import io.github.assafep.jobstein.validation.Diagnostics;
 
 class GoogleAuthorizationIT {
     @TempDir Path root;
@@ -64,6 +65,10 @@ class GoogleAuthorizationIT {
                 catch(Exception e){throw new AssertionError(e);}
             },Optional.empty(),0,Duration.ofSeconds(1)));
             assertEquals(DiagnosticException.Code.GOOGLE_TOKEN_EXCHANGE_FAILED,error.code());
+            var message=Diagnostics.describe(error);
+            assertTrue(message.contains("invalid_grant"));
+            assertTrue(message.contains("authorization code is expired"));
+            assertFalse(message.contains("synthetic-secret"));
         }
     }
     @Test void verifiesPkceAndPreservesExistingTokenOnAccountMismatch()throws Exception{
