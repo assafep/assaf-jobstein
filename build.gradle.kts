@@ -50,7 +50,12 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
-application { mainClass.set("io.github.assafep.jobstein.cli.Jobstein") }
+application {
+    mainClass.set("io.github.assafep.jobstein.cli.Jobstein")
+    // PDFBox uses a JDK-internal cleaner when available. Keep the opening
+    // narrowly scoped to java.nio and only to the unnamed application module.
+    applicationDefaultJvmArgs = listOf("--add-opens=java.base/java.nio=ALL-UNNAMED")
+}
 
 distributions {
     main {
@@ -113,7 +118,10 @@ tasks.named<Sync>("installDist") {
 }
 tasks.named("distZip") { dependsOn(createRuntimeImage) }
 tasks.named("distTar") { dependsOn(createRuntimeImage) }
-tasks.test { useJUnitPlatform() }
+tasks.test {
+    useJUnitPlatform()
+    jvmArgs("--add-opens=java.base/java.nio=ALL-UNNAMED")
+}
 tasks.withType<AbstractArchiveTask>().configureEach {
     isReproducibleFileOrder = true
     isPreserveFileTimestamps = false

@@ -3,7 +3,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 home=$(mktemp -d)
 trap 'rm -rf "$home"' EXIT
-export JAVA_OPTS="${JAVA_OPTS:-} -Duser.home=$home"
+# The smoke test exercises PDF creation and parsing repeatedly. Commons Logging
+# otherwise emits PDFBox's environment/font discovery diagnostics to stderr;
+# command failures and the explicit sandbox diagnostics remain visible.
+export JAVA_OPTS="${JAVA_OPTS:-} -Duser.home=$home -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"
 cli=./build/install/jobstein/bin/jobstein
 "$cli" --help
 echo 'Checking intentional onboarding failure (expected error follows)'
