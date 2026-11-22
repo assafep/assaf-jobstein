@@ -27,7 +27,13 @@ Use a disposable Google account and development project for the first test. Live
    bash scripts/live-preflight.sh
    ```
 
-2. Choose the environment and GCP project. Use one project per live environment. The following console work is manual and must be completed in a browser:
+2. Choose the environment and GCP project. Use one project per live environment. From the repository root, start the guided browser sequence with your project ID:
+
+   ```bash
+   bash scripts/live-console-guide.sh YOUR_TEST_PROJECT
+   ```
+
+   The script prints the Auth Platform and Credentials links in order and pauses between them. The following console work is manual and must be completed in a browser:
 
    - In **Google Auth Platform**, configure the app branding and support email, choose the audience, add the disposable account as a test user, and configure the requested scopes. The required scopes are listed again in step 4. Use fictional or disposable values while developing.
 
