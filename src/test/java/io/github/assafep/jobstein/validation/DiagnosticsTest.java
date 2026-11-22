@@ -30,4 +30,14 @@ class DiagnosticsTest {
         var diagnostic=new DiagnosticException(DiagnosticException.Code.ENVIRONMENT_PROJECT_MISMATCH);
         assertTrue(Diagnostics.describe(diagnostic).contains("already bound to a different"));
     }
+
+    @Test void cliOnboardingOutputExplainsInvalidGrantWithoutSecrets(){
+        var diagnostic=DiagnosticException.oauthTokenExchange("invalid_grant");
+        String output=Diagnostics.describe(diagnostic);
+        assertTrue(output.startsWith("[GOOGLE_TOKEN_EXCHANGE_FAILED]"));
+        assertTrue(output.contains("invalid_grant"));
+        assertTrue(output.contains("authorization code is expired"));
+        assertFalse(output.contains("synthetic-secret"));
+        assertFalse(output.contains("authorization-code-value"));
+    }
 }
