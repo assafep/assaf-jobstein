@@ -36,13 +36,7 @@ public final class GoogleOAuth {
         this.identityEndpoint=testOrigin.resolve("/v1/userinfo");
     }
     public synchronized void importClient(Path path, String expectedProject) throws IOException {
-        if (path == null || !Files.isRegularFile(path))
-            throw new NoSuchFileException(String.valueOf(path));
-        if (!Files.isReadable(path))
-            throw new AccessDeniedException(path.toString());
-        JsonNode client = JSON.readTree(path.toFile()).path("installed");
-        if (!client.path("client_id").isTextual() || !client.path("client_secret").isTextual())
-            throw new IOException("Expected desktop OAuth client JSON");
+        JsonNode client = readClient(path);
         if (!expectedProject.equals(client.path("project_id").asText()))
             throw new DiagnosticException(DiagnosticException.Code.GOOGLE_OAUTH_CLIENT_MISMATCH);
         if (secrets.get(REFRESH).isPresent()) {
@@ -52,6 +46,23 @@ public final class GoogleOAuth {
         }
         secrets.put(CLIENT, JSON.writeValueAsBytes(client));
         tokens.clear();
+    }
+
+    public synchronized String projectId(Path path) throws IOException {
+        return readClient(path).path("project_id").asText();
+    }
+
+    private JsonNode readClient(Path path) throws IOException {
+        if (path == null || !Files.isRegularFile(path))
+            throw new NoSuchFileException(String.valueOf(path));
+        if (!Files.isReadable(path))
+            throw new AccessDeniedException(path.toString());
+        JsonNode client = JSON.readTree(path.toFile()).path("installed");
+        if (!client.path("client_id").isTextual() || !client.path("client_secret").isTextual())
+            throw new IOException("Expected desktop OAuth client JSON");
+        String projectId = client.path("project_id").asText();
+        if (projectId.isBlank()) throw new IOException("Expected OAuth client project_id");
+        return client;
     }
     private JsonNode client() throws IOException {
         return JSON.readTree(secrets.get(CLIENT).orElseThrow(() -> new IOException("Import desktop OAuth client first")));

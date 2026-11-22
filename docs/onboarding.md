@@ -48,10 +48,10 @@ Use a disposable Google account and development project for the first test. Live
      *Illustrative mockup only. The displayed project, filename and values are fictional.*
 
    The runtime enables the Drive, Docs, Gmail and Calendar APIs during Google configuration.
-3. From a terminal, start the interactive workflow for your existing project. Replace both example paths and the project ID. Always specify the environment explicitly because the administrative CLI defaults to production.
+3. From a terminal, start the interactive workflow. Replace both example paths. The project ID is resolved from the downloaded OAuth JSON; you may provide `--project` only when you want to explicitly verify it matches. Always specify the environment explicitly because the administrative CLI defaults to production.
 
    ```bash
-   jobstein onboard --env development --project YOUR_TEST_PROJECT \
+   jobstein onboard --env development \
      --oauth-client "$HOME/private/oauth-client.json" \
      --role "Software Engineer" --resume /absolute/path/to/synthetic-resume.pdf
    ```

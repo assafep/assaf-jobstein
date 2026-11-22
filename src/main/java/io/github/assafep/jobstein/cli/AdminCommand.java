@@ -77,7 +77,9 @@ final class AdminCommand implements Callable<Integer> {
     }
     private void configureGoogle()throws Exception{
         var previous=config.load("google",GoogleSettings.class);
-        String id=ask("GCP project ID",project,previous.map(GoogleSettings::projectId).orElse(null));
+        String clientProject=oauthClient==null?null:oauth().projectId(oauthClient);
+        String fallback=previous.map(GoogleSettings::projectId).orElse(clientProject);
+        String id=ask("GCP project ID",project,fallback);
         if(previous.isPresent()&&!previous.get().projectId().equals(id))throw new IOException("Environment already bound to another project");
         var gcloud=new GcloudClient();
         gcloud.configure(id,createProject||confirm("Create GCP project if missing",false));

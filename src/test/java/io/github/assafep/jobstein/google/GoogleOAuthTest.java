@@ -27,6 +27,16 @@ class GoogleOAuthTest {
         assertEquals(DiagnosticException.Code.GOOGLE_OAUTH_CLIENT_MISMATCH, error.code());
     }
 
+    @Test
+    void resolvesProjectIdFromDesktopClient() throws Exception {
+        var clientFile = Files.createTempFile("jobstein-oauth-client-", ".json");
+        Files.writeString(clientFile, """
+            {"installed":{"project_id":"selected-project","client_id":"client","client_secret":"secret"}}
+            """);
+
+        assertEquals("selected-project", new GoogleOAuth(new MemorySecretStore()).projectId(clientFile));
+    }
+
     private static final class MemorySecretStore implements SecretStore {
         private final Map<String, byte[]> values = new HashMap<>();
 
