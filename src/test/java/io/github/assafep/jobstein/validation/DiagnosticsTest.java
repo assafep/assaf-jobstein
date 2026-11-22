@@ -25,4 +25,9 @@ class DiagnosticsTest {
         assertTrue(Diagnostics.describe(diagnostic).contains("different Google Cloud project"));
         assertTrue(Diagnostics.describe(diagnostic).startsWith("[GOOGLE_OAUTH_CLIENT_MISMATCH]"));
     }
+
+    @Test void describesEnvironmentProjectMismatch(){
+        var diagnostic=new DiagnosticException(DiagnosticException.Code.ENVIRONMENT_PROJECT_MISMATCH);
+        assertTrue(Diagnostics.describe(diagnostic).contains("already bound to a different"));
+    }
 }

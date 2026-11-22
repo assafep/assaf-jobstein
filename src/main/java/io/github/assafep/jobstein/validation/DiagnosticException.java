@@ -27,6 +27,7 @@ public final class DiagnosticException extends IOException {
         GOOGLE_RESOURCE_MISSING("Google Workspace resource was not found. Inspect resource provisioning and permissions."),
         GOOGLE_REQUEST_REJECTED("Google Workspace rejected the request. Check the environment and resource state."),
         GOOGLE_OAUTH_CLIENT_MISMATCH("OAuth client belongs to a different Google Cloud project. Download a Desktop client from the selected project or change --project to match the client JSON."),
+        ENVIRONMENT_PROJECT_MISMATCH("Environment is already bound to a different Google Cloud project. Use the original OAuth client/project or start with a new environment name."),
         ONBOARDING_CHECKPOINT_INVALID("Onboarding checkpoint state is invalid. Preserve the local configuration, repair or remove only the affected checkpoint, then rerun onboard."),
         LOCAL_CONFIGURATION_INVALID("Local configuration ownership or permissions are unsafe. Preserve the environment and repair the affected files explicitly before retrying."),
         GCP_APIS_MISSING("Required Google APIs are disabled. Run google configure."),
