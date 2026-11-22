@@ -33,7 +33,7 @@ Use a disposable Google account and development project for the first test. Live
    bash scripts/live-console-guide.sh
    ```
 
-   The script lists projects returned by `gcloud projects list` and lets you choose one. It appends the active account from `gcloud auth list` as `authuser` to both links. You may pass a project ID explicitly, or override the account selection when the browser’s account order differs:
+   The script lists projects returned by `gcloud projects list` and lets you choose one, verifies access, and offers to enable the required Drive, Docs, Gmail and Calendar APIs. It does not create projects or change Auth Platform settings. It appends the active account from `gcloud auth list` as `authuser` to both links. You may pass a project ID explicitly, or override the account selection when the browser’s account order differs:
 
    ```bash
    bash scripts/live-console-guide.sh PROJECT_ID
@@ -53,6 +53,12 @@ Use a disposable Google account and development project for the first test. Live
      ![Illustrative Google Auth Platform audience test-user screen](images/onboarding/auth-platform-audience-test-user-illustration.png)
 
      *Illustrative mockup only. Use the actual disposable account you control; the addresses shown here are fictional.*
+
+     On **Data access** or **Scopes**, select the scopes Jobstein requests and save them. The required set is `openid`, `userinfo.email`, `drive.file`, `gmail.readonly`, `gmail.compose`, and `calendar.events.readonly`:
+
+     ![Illustrative Google Auth Platform scopes screen](images/onboarding/auth-platform-scopes-data-access-illustration.png)
+
+     *Illustrative mockup only. The console may group or label scopes differently.*
 
    - In **Credentials**, create an OAuth client with application type **Desktop app**, then download the client JSON. Store that file outside the checkout and do not commit it or place it in Drive.
 

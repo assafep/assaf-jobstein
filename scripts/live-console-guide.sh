@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Purpose: guide an operator through the browser-only Google OAuth setup links.
+# Purpose: prepare a project safely, then guide an operator through browser-only Google OAuth setup.
 # Used by: developers configuring a disposable live-validation project.
 # Lifecycle: manual setup, between gcloud preflight and the jobstein onboard command.
 set -euo pipefail
@@ -53,6 +53,36 @@ else
     exit 2
   fi
   project_id=${projects[$((selection - 1))]}
+fi
+
+required_apis=(drive.googleapis.com docs.googleapis.com gmail.googleapis.com calendar-json.googleapis.com)
+echo 'Checking Google Cloud project access...'
+gcloud projects describe "$project_id" --format='value(projectId)' >/dev/null
+mapfile -t enabled_apis < <(gcloud services list --enabled --project="$project_id" --format='value(config.name)')
+missing_apis=()
+for api in "${required_apis[@]}"; do
+  api_enabled=false
+  for enabled_api in "${enabled_apis[@]}"; do
+    if [[ "$enabled_api" == "$api" ]]; then
+      api_enabled=true
+      break
+    fi
+  done
+  if [[ "$api_enabled" == false ]]; then
+    missing_apis+=("$api")
+  fi
+done
+if ((${#missing_apis[@]})); then
+  echo "Required APIs not enabled: ${missing_apis[*]}"
+  read -r -p 'Enable these APIs now? [Y/n]: ' enable_answer
+  if [[ -z "$enable_answer" || "$enable_answer" =~ ^[Yy]$ ]]; then
+    gcloud services enable "${missing_apis[@]}" --project="$project_id" --quiet
+    echo 'Required APIs enabled.'
+  else
+    echo 'API enablement skipped; onboarding may fail until they are enabled.' >&2
+  fi
+else
+  echo 'Required APIs already enabled.'
 fi
 
 if [[ -z "$authuser" ]]; then
