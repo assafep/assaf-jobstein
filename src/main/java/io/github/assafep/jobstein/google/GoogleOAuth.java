@@ -13,6 +13,9 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.io.*;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.AccessDeniedException;
 import java.util.function.Consumer;
 
 public final class GoogleOAuth {
@@ -32,6 +35,10 @@ public final class GoogleOAuth {
         this.identityEndpoint=testOrigin.resolve("/v1/userinfo");
     }
     public synchronized void importClient(Path path, String expectedProject) throws IOException {
+        if (path == null || !Files.isRegularFile(path))
+            throw new NoSuchFileException(String.valueOf(path));
+        if (!Files.isReadable(path))
+            throw new AccessDeniedException(path.toString());
         JsonNode client = JSON.readTree(path.toFile()).path("installed");
         if (!client.path("client_id").isTextual() || !client.path("client_secret").isTextual()
             || !expectedProject.equals(client.path("project_id").asText()))
