@@ -44,7 +44,7 @@ public final class Jobstein {
         var home = java.nio.file.Path.of(System.getProperty("user.home"), ".config", "jobstein", "environments");
         var environments = new io.github.assafep.jobstein.environment.EnvironmentService(home);
         CommandLine env = group("environment");
-        for (String operation : List.of("create", "list", "show", "validate")) {
+        for (String operation : List.of("create", "list", "show", "validate", "current")) {
             env.addSubcommand(operation, new CommandLine(new EnvironmentCommand(environments, operation)).setCommandName(operation));
         }
         root.addSubcommand("environment", env);

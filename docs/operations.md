@@ -10,12 +10,13 @@ Today each command starts the Jobstein runtime, performs one operation, and exit
 
 ```sh
 jobstein environment list
+jobstein environment current --env development
 jobstein doctor --env sandbox
 jobstein profile list --env sandbox
 jobstein state status --env sandbox
 ```
 
-Use doctor for readiness, profile list for role slugs and activation status, and state status for the consistency of the local and stored profile indexes. Doctor checks settings, checkpoint integrity, integrations and active descriptors. On a live environment it makes validation requests. If a check fails, follow its diagnostic and rerun doctor. It leaves remote state and existing configuration permissions intact.
+Use `environment current` to confirm which environment a command will select and which Google Cloud project is bound to it. Use doctor for readiness, profile list for role slugs and activation status, and state status for the consistency of the local and stored profile indexes. Doctor checks settings, checkpoint integrity, integrations and active descriptors. On a live environment it makes validation requests. If a check fails, follow its diagnostic and rerun doctor. It leaves remote state and existing configuration permissions intact.
 
 ## Maintain profiles and resumes
 

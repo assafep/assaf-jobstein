@@ -1,6 +1,8 @@
 package io.github.assafep.jobstein.cli;
 
 import io.github.assafep.jobstein.environment.EnvironmentService;
+import io.github.assafep.jobstein.config.ConfigurationRepository;
+import io.github.assafep.jobstein.google.GoogleSettings;
 import picocli.CommandLine;
 import java.util.concurrent.Callable;
 
@@ -29,6 +31,12 @@ final class EnvironmentCommand implements Callable<Integer> {
                 case "validate" -> {
                     service.validate(environment);
                     out.println("Local environment metadata valid: " + environment);
+                }
+                case "current" -> {
+                    service.validate(environment);
+                    var google = new ConfigurationRepository(service.directory(environment)).load("google", GoogleSettings.class);
+                    out.println("Environment: " + environment);
+                    out.println("GCP project: " + google.map(GoogleSettings::projectId).orElse("(not configured)"));
                 }
                 default -> throw new IllegalStateException("Unknown environment operation");
             }
