@@ -16,7 +16,7 @@ jobstein profile list --env sandbox
 jobstein state status --env sandbox
 ```
 
-Use `environment current` to confirm which environment a command will select, whether it is `sandbox`, `live` or `production`, and which Google Cloud project is bound to it. The CLI classifies the names `sandbox` and `production` specially; every other valid environment name is `live`. Use doctor for readiness, profile list for role slugs and activation status, and state status for the consistency of the local and stored profile indexes. Doctor checks settings, checkpoint integrity, integrations and active descriptors. On a live environment it makes validation requests. If a check fails, follow its diagnostic and rerun doctor. It leaves remote state and existing configuration permissions intact.
+Use `environment current` to confirm which environment a command will select, whether it is `sandbox`, `live` or `production`, its local directory, the bound Google Cloud project, and whether both Google OAuth credentials are configured. The CLI classifies the names `sandbox` and `production` specially; every other valid environment name is `live`. Use doctor for readiness, profile list for role slugs and activation status, and state status for the consistency of the local and stored profile indexes. Doctor checks settings, checkpoint integrity, integrations and active descriptors. On a live environment it makes validation requests. If a check fails, follow its diagnostic and rerun doctor. It leaves remote state and existing configuration permissions intact.
 
 ## Maintain profiles and resumes
 

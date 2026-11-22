@@ -3,6 +3,8 @@ package io.github.assafep.jobstein.cli;
 import io.github.assafep.jobstein.environment.EnvironmentService;
 import io.github.assafep.jobstein.config.ConfigurationRepository;
 import io.github.assafep.jobstein.google.GoogleSettings;
+import io.github.assafep.jobstein.security.CredentialStores;
+import io.github.assafep.jobstein.security.PosixFileSecretStore;
 import picocli.CommandLine;
 import java.util.concurrent.Callable;
 
@@ -35,9 +37,12 @@ final class EnvironmentCommand implements Callable<Integer> {
                 case "current" -> {
                     service.validate(environment);
                     var google = new ConfigurationRepository(service.directory(environment)).load("google", GoogleSettings.class);
+                    var config = new ConfigurationRepository(service.directory(environment));
                     out.println("Environment: " + environment);
+                    out.println("Directory: " + service.directory(environment));
                     out.println("Type: " + type(environment));
                     out.println("GCP project: " + google.map(GoogleSettings::projectId).orElse("(not configured)"));
+                    out.println("Google OAuth credentials: " + (oauthConfigured(service.directory(environment), config) ? "configured" : "not configured"));
                 }
                 default -> throw new IllegalStateException("Unknown environment operation");
             }
@@ -54,5 +59,12 @@ final class EnvironmentCommand implements Callable<Integer> {
         if ("sandbox".equals(name)) return "sandbox";
         if ("production".equals(name)) return "production";
         return "live";
+    }
+
+    private static boolean oauthConfigured(java.nio.file.Path directory, ConfigurationRepository config) throws java.io.IOException {
+        var settings = config.load("credential-store", CredentialStores.Settings.class);
+        if (settings.isPresent() && settings.get().backend() != CredentialStores.Backend.FILE) return false;
+        var store = new PosixFileSecretStore(directory.resolve("secrets"));
+        return store.get("secret://google/client").isPresent() && store.get("secret://google/refresh").isPresent();
     }
 }

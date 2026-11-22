@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import io.github.assafep.jobstein.config.ConfigurationRepository;
 import io.github.assafep.jobstein.environment.EnvironmentService;
 import io.github.assafep.jobstein.google.GoogleSettings;
+import io.github.assafep.jobstein.security.PosixFileSecretStore;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.io.TempDir;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -33,11 +35,14 @@ class JobsteinTest {
         environments.create("development");
         new ConfigurationRepository(environments.directory("development"))
             .save("google", new GoogleSettings("proj-jobstein-dev-515517"));
+        var secrets = new PosixFileSecretStore(environments.directory("development").resolve("secrets"));
+        secrets.put("secret://google/client", "client".getBytes(StandardCharsets.UTF_8));
+        secrets.put("secret://google/refresh", "refresh".getBytes(StandardCharsets.UTF_8));
         var output = new StringWriter();
         var cli = new picocli.CommandLine(new EnvironmentCommand(environments, "current"));
         cli.setOut(new PrintWriter(output, true));
         assertEquals(0, cli.execute("--env", "development"));
-        assertEquals("Environment: development\nType: live\nGCP project: proj-jobstein-dev-515517\n", output.toString());
+        assertEquals("Environment: development\nDirectory: " + environments.directory("development") + "\nType: live\nGCP project: proj-jobstein-dev-515517\nGoogle OAuth credentials: configured\n", output.toString());
     }
 
     @Test void currentClassifiesSandboxWithoutProject() throws Exception {
@@ -47,6 +52,6 @@ class JobsteinTest {
         var cli=new picocli.CommandLine(new EnvironmentCommand(environments,"current"));
         cli.setOut(new PrintWriter(output,true));
         assertEquals(0,cli.execute("--env","sandbox"));
-        assertEquals("Environment: sandbox\nType: sandbox\nGCP project: (not configured)\n",output.toString());
+        assertEquals("Environment: sandbox\nDirectory: " + environments.directory("sandbox") + "\nType: sandbox\nGCP project: (not configured)\nGoogle OAuth credentials: not configured\n",output.toString());
     }
 }
