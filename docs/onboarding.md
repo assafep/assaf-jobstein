@@ -27,7 +27,21 @@ Use a disposable Google account and development project for the first test. Live
    bash scripts/live-preflight.sh
    ```
 
-2. Choose the environment and GCP project. Use one project per live environment. In the project, configure Google Auth Platform branding, audience, test users and scopes. Create a **Desktop** OAuth client and download its JSON. The runtime enables the Drive, Docs, Gmail and Calendar APIs during Google configuration.
+2. Choose the environment and GCP project. Use one project per live environment. The following console work is manual and must be completed in a browser:
+
+   - In **Google Auth Platform**, configure the app branding and support email, choose the audience, add the disposable account as a test user, and configure the requested scopes. The required scopes are listed again in step 4. Use fictional or disposable values while developing.
+
+     ![Illustrative Google Auth Platform branding screen](images/onboarding/auth-platform-branding-illustration.png)
+
+     *Illustrative mockup only. Console labels and navigation may differ; do not enter real credentials into documentation examples.*
+
+   - In **Credentials**, create an OAuth client with application type **Desktop app**, then download the client JSON. Store that file outside the checkout and do not commit it or place it in Drive.
+
+     ![Illustrative Desktop OAuth client creation and download screen](images/onboarding/oauth-client-download-illustration.png)
+
+     *Illustrative mockup only. The displayed project, filename and values are fictional.*
+
+   The runtime enables the Drive, Docs, Gmail and Calendar APIs during Google configuration.
 3. From a terminal, start the interactive workflow for your existing project. Replace both example paths and the project ID. Always specify the environment explicitly because the administrative CLI defaults to production.
 
    ```bash
