@@ -19,7 +19,14 @@ Look for `PASS Sandbox fixture ready` followed by `software.engineer ACTIVE` fro
 
 Use a disposable Google account and development project for the first test. Live setup enables Google APIs, writes Drive files, and can incur costs. Use a synthetic text-based PDF. Keep the downloaded OAuth client and credentials outside the checkout and Drive.
 
-1. Build the CLI as above. Install and authenticate the Google Cloud CLI for project administration. On Debian or Ubuntu, the project supplies `bash scripts/setup-live-tools.sh`. Run `gcloud auth login --no-launch-browser`, then `bash scripts/live-preflight.sh`.
+1. Build the CLI as above. Install and authenticate the Google Cloud CLI for project administration. On Debian or Ubuntu, run these commands from the repository root:
+
+   ```bash
+   bash scripts/setup-live-tools.sh
+   gcloud auth login --no-launch-browser
+   bash scripts/live-preflight.sh
+   ```
+
 2. Choose the environment and GCP project. Use one project per live environment. In the project, configure Google Auth Platform branding, audience, test users and scopes. Create a **Desktop** OAuth client and download its JSON. The runtime enables the Drive, Docs, Gmail and Calendar APIs during Google configuration.
 3. From a terminal, start the interactive workflow for your existing project. Replace both example paths and the project ID. Always specify the environment explicitly because the administrative CLI defaults to production.
 
