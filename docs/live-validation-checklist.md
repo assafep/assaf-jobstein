@@ -55,3 +55,22 @@ cleanup: pending|complete
 ```
 
 This evidence proves only the checks recorded for that disposable development run. It does not establish production readiness or live compatibility beyond the tested account, project, commit, and time.
+
+## Live onboarding result
+
+On November 23, 2026, live onboarding was verified for `kumetix-dev` using the bundled Java 21 launcher built from commit `bc31e8cd051159dc42b34151479f321f78d9256c`. A fresh descriptor reached review, the operator approved it, and `profile list` reported `senior.software.engineer ACTIVE`.
+
+`jobstein doctor --env kumetix-dev` exited with code 0 and reported all eight checks as passing.
+
+| Check | Result |
+| --- | --- |
+| Local environment | PASS |
+| Local configuration permissions | PASS |
+| Onboarding checkpoint state | PASS |
+| GCP project and enabled APIs | PASS |
+| Google OAuth and Workspace read access | PASS |
+| AI integrations and model availability | PASS |
+| User identity and shared Drive state | PASS |
+| Applicant profiles | PASS |
+
+Doctor reported `Configured checks passed (no email sent)`. This record covers live onboarding, descriptor approval, and the doctor checks. The guarded live smoke script has a separate validation procedure above.

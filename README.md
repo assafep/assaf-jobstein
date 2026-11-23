@@ -14,7 +14,7 @@ The **Jobstein runtime** is the software that reads and writes an environment's 
 
 ## Developing Jobstein
 
-The project builds with Java 21 and the Gradle wrapper. The test suite uses synthetic data, including local HTTP tests for the Google and xAI adapters. Authenticated end-to-end validation is still outstanding.
+The project builds with Java 21 and the Gradle wrapper. The test suite uses synthetic data, including local HTTP tests for the Google and xAI adapters. The [live onboarding result](docs/live-validation-checklist.md#live-onboarding-result) records an authenticated development run.
 
 - [Development](docs/development.md) covers building, testing, packaging, and Windows development under WSL.
 - [Live validation](docs/live-validation-checklist.md) covers opt-in testing with disposable accounts.
