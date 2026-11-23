@@ -14,9 +14,12 @@ val java21Launcher = javaToolchains.launcherFor {
     languageVersion.set(JavaLanguageVersion.of(21))
 }
 val runtimeImage = layout.buildDirectory.dir("runtime")
+// The Google token endpoint needs elliptic-curve TLS support from SunEC.
+val runtimeModules = "java.base,java.desktop,java.net.http,jdk.httpserver,jdk.crypto.ec"
 
 val createRuntimeImage = tasks.register<Exec>("runtimeImage") {
     inputs.files(tasks.named("jar"), configurations.runtimeClasspath)
+    inputs.property("runtimeModules", runtimeModules)
     outputs.dir(runtimeImage)
     dependsOn(tasks.named("jar"))
     doFirst {
@@ -26,7 +29,7 @@ val createRuntimeImage = tasks.register<Exec>("runtimeImage") {
         delete(output)
         commandLine(
             jlink,
-            "--add-modules", "java.base,java.desktop,java.net.http,jdk.httpserver",
+            "--add-modules", runtimeModules,
             "--output", output,
             "--strip-debug",
             "--no-header-files",

@@ -13,7 +13,7 @@ bash scripts/smoke-test.sh
 
 The smoke test uses a temporary home directory and deliberately triggers failures to test recovery. A passing run exits with code 0 and ends with `PASS: all sandbox smoke checks completed`. CI also verifies distributions and live-script opt-in guards. Authenticated provider testing has a separate [live validation checklist](live-validation-checklist.md).
 
-The wrapper selects the pinned Gradle version. The Java toolchain and daemon criteria select Java 21 for builds. The first build needs network access for dependencies and may provision a JDK in the user's Gradle cache. `installDist`, `distZip`, and `distTar` use that toolchain's `jlink` to include a compressed Java 21 runtime under `runtime/`. The generated launchers prefer this bundled runtime, so an installed distribution does not require Java 21 on the host. `JAVA_HOME` and `PATH` remain fallbacks for development and older/custom distributions.
+The wrapper selects the pinned Gradle version. The Java toolchain and daemon criteria select Java 21 for builds. The first build needs network access for dependencies and may provision a JDK in the user's Gradle cache. `installDist`, `distZip`, and `distTar` use that toolchain's `jlink` to include a compressed Java 21 runtime under `runtime/`. Distribution verification checks both archives for `jdk.crypto.ec`, which provides elliptic-curve TLS support for Google OAuth. The generated launchers prefer this bundled runtime, so an installed distribution does not require Java 21 on the host. `JAVA_HOME` and `PATH` remain fallbacks for development and older/custom distributions.
 
 ## Windows with WSL 2
 

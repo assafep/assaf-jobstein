@@ -31,6 +31,12 @@ for extracted in "$verification_root/zip" "$verification_root/tar"; do
     echo "Distribution is missing its executable Java runtime: $runtime" >&2
     exit 1
   fi
+  # Local HTTP tests use the full JDK and cannot detect a missing TLS provider in the bundle.
+  modules=$("$runtime" --list-modules)
+  if ! grep -q '^jdk\.crypto\.ec@' <<< "$modules"; then
+    echo "Distribution is missing the Java module required for Google OAuth TLS: $runtime" >&2
+    exit 1
+  fi
   # Prove the launcher uses the bundled runtime, even when host Java is unavailable.
   env -u JAVA_HOME PATH=/usr/bin:/bin "$cli" --version >/dev/null
 done
