@@ -102,3 +102,5 @@ On November 23, 2026, the updated script ran against `kumetix-dev` with explicit
 | Doctor | PASS |
 
 Doctor reported `Configured checks passed (no email sent)`. The run used validation requests only.
+
+The rerun started at `2026-11-23T11:46:02Z` from a clean checkout of `f203f59f97202658d34b4ab16d1b021f0731bf32`, using the bundled Java 21 launcher for that checkout. With live opt-in and `--confirm-development kumetix-dev`, it reproduced every PASS in the table above, exited with code 0, and reported `Configured checks passed (no email sent)`.
