@@ -5,7 +5,7 @@ This checklist is for a manually authorized development-environment run. It does
 ## Before the run
 
 - Confirm the checkout commit and record it in the evidence template below.
-- Confirm the environment is `development`, never `production` or `sandbox`.
+- Confirm the named environment is intended for development testing. The script rejects the reserved names `production` and `sandbox`.
 - Confirm the Google account and GCP project are disposable and that billing limits are understood.
 - Confirm OAuth client JSON, refresh tokens, AI credentials, and local state are outside Git and outside Drive.
 - Run `./gradlew test installDist` and `bash scripts/smoke-test.sh`.
@@ -14,10 +14,10 @@ This checklist is for a manually authorized development-environment run. It does
 
 ## Authorized run
 
-After the preconditions pass, run the guarded script.
+After the preconditions pass, run the guarded script with your chosen environment name. The `--confirm-development` flag confirms that the named environment is safe for development testing.
 
 ```sh
-JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh --confirm-development development
+JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh --confirm-development project-dev
 ```
 
 The guarded script performs read and validation operations for environment, Google, AI, user state, profile state, and doctor checks. It does not generate descriptors, send mail, submit applications, or create remote resources.
@@ -36,7 +36,7 @@ date_utc: YYYY-MM-DDThh:mm:ssZ
 commit: <40-character commit SHA>
 host: <generic label, no username or hostname>
 java: 21
-environment: development
+environment: <development environment name>
 google_account: disposable-account-<redacted>
 gcp_project: disposable-project-<redacted>
 ai_provider: <provider name only>
@@ -74,3 +74,31 @@ On November 23, 2026, live onboarding was verified for `kumetix-dev` using the b
 | Applicant profiles | PASS |
 
 Doctor reported `Configured checks passed (no email sent)`. This record covers live onboarding, descriptor approval, and the doctor checks. The guarded live smoke script has a separate validation procedure above.
+
+## Guarded live smoke attempt
+
+The guarded script was invoked for `kumetix-dev` with live opt-in on commit `b4308a4878104d0782685d4a5fe87ce1fc50bf57`.
+
+| Stage | Result |
+| --- | --- |
+| Environment guard | Rejected with exit code 2. The script accepts only the literal environment name `development`. |
+| Preflight | Not run |
+| Environment, Google, AI, user, state, and doctor checks | Not run |
+
+The attempt stopped before any live requests. The successful doctor result above came from the live onboarding verification.
+
+## Guarded live smoke result
+
+On November 23, 2026, the updated script ran against `kumetix-dev` with explicit live opt-in and exited with code 0. The bundled Java 21 launcher was built from `b4308a4878104d0782685d4a5fe87ce1fc50bf57`. The environment guard and check reporting changes were in the working tree at the time of the run.
+
+| Check | Result |
+| --- | --- |
+| Preflight | PASS |
+| Environment validation | PASS |
+| Google validation | PASS |
+| AI validation | PASS |
+| User validation | PASS |
+| State validation | PASS |
+| Doctor | PASS |
+
+Doctor reported `Configured checks passed (no email sent)`. The run used validation requests only.

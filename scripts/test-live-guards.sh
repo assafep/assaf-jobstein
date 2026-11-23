@@ -12,5 +12,8 @@ expect_rejection(){
 expect_rejection env JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh
 expect_rejection env JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh --confirm-development production
 expect_rejection env JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh --confirm-development sandbox
+expect_rejection env JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh --confirm-development ../project-dev
+expect_rejection env JOBSTEIN_LIVE_TESTS=1 bash scripts/live-smoke-test.sh --confirm-development ''
 expect_rejection env JOBSTEIN_LIVE_TESTS=0 bash scripts/live-smoke-test.sh --confirm-development development
+expect_rejection env -u JOBSTEIN_LIVE_TESTS bash scripts/live-smoke-test.sh --confirm-development project-dev
 echo 'PASS Live smoke test opt-in and environment guards'
