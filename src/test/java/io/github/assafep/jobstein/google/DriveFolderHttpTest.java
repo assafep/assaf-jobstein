@@ -38,10 +38,17 @@ class DriveFolderHttpTest {
                 posts.incrementAndGet();
                 var body=JSON.readTree(MockHttp.body(exchange));
                 assertEquals("allocated",body.path("id").asText());
-                assertEquals("root",body.path("parents").path(0).asText());
+                assertFalse(body.has("parents"));
                 assertEquals("fixture-marker",body.path("appProperties").path("jobsteinId").asText());
                 MockHttp.reply(exchange,409,"{}");
-            }else if(path.endsWith("/root"))MockHttp.reply(exchange,200,"{\"id\":\"actual-root\"}");
+            }else if(path.endsWith("/root"))MockHttp.reply(exchange,404,"{}");
+            else if(path.equals("/drive/v3/files")){
+                String query=java.net.URLDecoder.decode(exchange.getRequestURI().getRawQuery(), StandardCharsets.UTF_8);
+                assertTrue(query.contains("'root' in parents"));
+                assertTrue(query.contains("fixture-marker"));
+                boolean inRoot=metadata.get().path("parents").path(0).asText().equals("actual-root");
+                MockHttp.reply(exchange,200,inRoot?"{\"files\":[{\"id\":\"allocated\"}]}":"{\"files\":[]}");
+            }
             else if(path.endsWith("/allocated"))MockHttp.reply(exchange,200,metadata.get().toString());
             else throw new AssertionError(path);
         })){
@@ -56,6 +63,21 @@ class DriveFolderHttpTest {
             invalid=folder();invalid.put("trashed",true);metadata.set(invalid);
             assertThrows(IOException.class,()->drive.ensureFolderWithId(null,"fixture","fixture-marker","allocated"));
             assertEquals(10,posts.get());
+        }
+    }
+    @Test void reportsDriveOperationWithoutProviderBodyOrResourceId() throws Exception {
+        try (var server = new MockHttp(exchange -> {
+            if (exchange.getRequestURI().getPath().equals("/token"))
+                MockHttp.reply(exchange,200,"{\"access_token\":\"fixture\",\"expires_in\":3600}");
+            else MockHttp.reply(exchange,404,"{\"error\":{\"message\":\"private-provider-detail\"}}");
+        })) {
+            var drive = client(server);
+            var error = assertThrows(WorkspaceClient.WorkspaceHttpException.class,
+                () -> drive.file("private-resource-id"));
+            var diagnostic = io.github.assafep.jobstein.validation.Diagnostics.describe(error);
+            assertTrue(diagnostic.startsWith("[GOOGLE_RESOURCE_MISSING] Read a Drive file or folder failed (HTTP 404)."));
+            assertFalse(diagnostic.contains("private-resource-id"));
+            assertFalse(diagnostic.contains("private-provider-detail"));
         }
     }
     @Test void rejectsAmbiguousOrMalformedDiscoveryAndUnexpectedCreationId()throws Exception{

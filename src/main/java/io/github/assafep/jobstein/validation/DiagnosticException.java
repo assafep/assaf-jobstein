@@ -28,7 +28,7 @@ public final class DiagnosticException extends IOException {
         GOOGLE_PERMISSION_DENIED("Google Workspace denied access. Check scopes, API enablement and resource permissions."),
         GOOGLE_RATE_LIMIT("Google Workspace quota or rate limit reached. Retry later."),
         GOOGLE_UNAVAILABLE("Google Workspace is temporarily unavailable. Retry later."),
-        GOOGLE_RESOURCE_MISSING("Google Workspace resource was not found. Inspect resource provisioning and permissions."),
+        GOOGLE_RESOURCE_MISSING("Google may return 404 for a missing resource or one this OAuth client cannot access. Check that you authorized the original Google account and OAuth client and that the resource or its parent is still in Drive."),
         GOOGLE_REQUEST_REJECTED("Google Workspace rejected the request. Check the environment and resource state."),
         GOOGLE_OAUTH_CLIENT_MISMATCH("OAuth client belongs to a different Google Cloud project. Download a Desktop client from the selected project or change --project to match the client JSON."),
         ENVIRONMENT_PROJECT_MISMATCH("Environment is already bound to a different Google Cloud project. Use the original OAuth client/project or start with a new environment name."),
@@ -57,12 +57,20 @@ public final class DiagnosticException extends IOException {
             case "" -> "Google returned no OAuth error code. Verify the OAuth client and retry.";
             default -> "Google returned OAuth error '"+errorCode(error)+"'. Verify the OAuth client and retry.";
         };
-        return new DiagnosticException(Code.GOOGLE_TOKEN_EXCHANGE_FAILED,safe,null);
+        return new DiagnosticException(Code.GOOGLE_TOKEN_EXCHANGE_FAILED,"Suggested fix: "+safe,null);
     }
     private static String errorCode(String value){
         if(value==null||!value.matches("[a-z][a-z0-9_.-]{0,63}"))return "unknown";
         return value;
     }
-    private static String message(Code code,String detail){return detail==null?Objects.requireNonNull(code).guidance():code.guidance()+" Suggested fix: "+detail;}
+    // DescriptorValidator supplies fixed reasons and paths from the schema it controls.
+    static DiagnosticException invalidDescriptor(String reason){
+        return new DiagnosticException(Code.DESCRIPTOR_INVALID,reason,null);
+    }
+    private static String message(Code code,String detail){
+        String guidance=Objects.requireNonNull(code).guidance();
+        if(detail==null)return guidance;
+        return code==Code.DESCRIPTOR_INVALID?detail+" "+guidance:guidance+" "+detail;
+    }
     public Code code(){return code;}
 }

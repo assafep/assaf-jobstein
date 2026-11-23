@@ -14,6 +14,11 @@ val java21Launcher = javaToolchains.launcherFor {
     languageVersion.set(JavaLanguageVersion.of(21))
 }
 val runtimeImage = layout.buildDirectory.dir("runtime")
+// PDFBox 3.0.4 looks up DirectByteBuffer.cleaner() and calls Cleaner.clean().
+val pdfBoxJvmArgs = listOf(
+    "--add-opens=java.base/java.nio=ALL-UNNAMED",
+    "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED"
+)
 // The Google token endpoint needs elliptic-curve TLS support from SunEC.
 val runtimeModules = "java.base,java.desktop,java.net.http,jdk.httpserver,jdk.crypto.ec"
 
@@ -55,9 +60,7 @@ dependencies {
 }
 application {
     mainClass.set("io.github.assafep.jobstein.cli.Jobstein")
-    // PDFBox uses a JDK-internal cleaner when available. Keep the opening
-    // narrowly scoped to java.nio and only to the unnamed application module.
-    applicationDefaultJvmArgs = listOf("--add-opens=java.base/java.nio=ALL-UNNAMED")
+    applicationDefaultJvmArgs = pdfBoxJvmArgs
 }
 
 distributions {
@@ -123,7 +126,7 @@ tasks.named("distZip") { dependsOn(createRuntimeImage) }
 tasks.named("distTar") { dependsOn(createRuntimeImage) }
 tasks.test {
     useJUnitPlatform()
-    jvmArgs("--add-opens=java.base/java.nio=ALL-UNNAMED")
+    jvmArgs(pdfBoxJvmArgs)
 }
 tasks.withType<AbstractArchiveTask>().configureEach {
     isReproducibleFileOrder = true

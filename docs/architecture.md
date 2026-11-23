@@ -42,7 +42,7 @@ sequenceDiagram
     R->>S: Recheck descriptor against stored PDF and mark ACTIVE
 ```
 
-Schema version 2 requires verbatim resume evidence after whitespace normalization. Matching text can still be misleading out of context, which is why activation requires human review. Version 1 descriptors require regeneration. A pending version 1 generation journal requires manual recovery before upgrade.
+Schema version 2 requires verbatim resume evidence after whitespace normalization. During generation, Jobstein builds the skills list from the skill evidence and checks each excerpt against the resume before saving. Matching text can still be misleading out of context, which is why activation requires human review. Version 1 descriptors require regeneration. A pending version 1 generation journal requires manual recovery before upgrade.
 
 A single local writer coordinates changes. Folder and upload intents record allocated Drive IDs before creation. A durable descriptor payload can be reused after an interrupted upload. Profile index writes journal the before and after snapshots, update the remote copy, then the local copy, and verify agreement. An unexpected snapshot requires investigation. The environment lock cannot coordinate writers on different hosts. See [index recovery](operations.md#inspect-and-recover-profile-indexes).
 

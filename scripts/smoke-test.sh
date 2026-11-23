@@ -9,7 +9,8 @@ trap 'rm -rf "$home"' EXIT
 # The smoke test exercises PDF creation and parsing repeatedly. Commons Logging
 # otherwise emits PDFBox's environment/font discovery diagnostics to stderr;
 # command failures and the explicit sandbox diagnostics remain visible.
-export JAVA_OPTS="${JAVA_OPTS:-} -Duser.home=$home -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"
+sandbox_java_opts="${JAVA_OPTS:-} -Duser.home=$home"
+export JAVA_OPTS="$sandbox_java_opts -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.NoOpLog"
 cli=./build/install/jobstein/bin/jobstein
 "$cli" --help
 echo 'Checking intentional onboarding failure (expected error follows)'
@@ -23,7 +24,17 @@ if "$cli" doctor --env sandbox; then
   echo 'Expected incomplete sandbox diagnostics to fail' >&2
   exit 1
 fi
-"$cli" onboard --env sandbox --non-interactive > "$home/recovery.log"
+# Enable PDFBox error logging for one packaged run so the cleanup regression is visible.
+if ! JAVA_OPTS="$sandbox_java_opts -Dorg.apache.commons.logging.Log=org.apache.commons.logging.impl.SimpleLog -Dorg.apache.commons.logging.simplelog.defaultlog=error" \
+  "$cli" onboard --env sandbox --non-interactive > "$home/recovery.log" 2> "$home/recovery.err"; then
+  cat "$home/recovery.err" >&2
+  exit 1
+fi
+if grep -Fq 'Unmapping is not supported' "$home/recovery.err"; then
+  cat "$home/recovery.err" >&2
+  exit 1
+fi
+cat "$home/recovery.err" >&2
 grep 'Previously completed: google-configure' "$home/recovery.log"
 grep 'Previously completed: google-authorize' "$home/recovery.log"
 grep 'Completed: ai-configure' "$home/recovery.log"

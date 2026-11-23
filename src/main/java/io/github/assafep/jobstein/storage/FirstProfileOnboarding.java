@@ -7,14 +7,20 @@ import io.github.assafep.jobstein.validation.DiagnosticException;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Consumer;
 
 /** Durable first-profile selection; callers hold the environment's single-writer lock. */
 public final class FirstProfileOnboarding {
     @FunctionalInterface public interface RoleSource {String get()throws Exception;}
     private final ProvisioningStateRepository repository;
     private final UserProfileService service;
+    private final Consumer<String> progress;
     public FirstProfileOnboarding(ProvisioningStateRepository repository,UserProfileService service){
+        this(repository,service,message->{});
+    }
+    public FirstProfileOnboarding(ProvisioningStateRepository repository,UserProfileService service,Consumer<String> progress){
         this.repository=Objects.requireNonNull(repository);this.service=Objects.requireNonNull(service);
+        this.progress=Objects.requireNonNull(progress);
     }
     private FirstProfile selection(Optional<String> requested,RoleSource source)throws Exception{
         var saved=repository.firstProfile();
@@ -51,7 +57,7 @@ public final class FirstProfileOnboarding {
         var selected=selection(requested,roleSource);
         var existing=service.profiles().entries().get(selected.slug());
         if(existing!=null)identity(selected,existing);
-        if(!repository.completed("first-profile"))new ProfileOnboarding(service).run(selected.role(),Optional.of(selected.id()),supplied,resumeSource,consent,review);
+        if(!repository.completed("first-profile"))new ProfileOnboarding(service,progress).run(selected.role(),Optional.of(selected.id()),supplied,resumeSource,consent,review);
         ready(selected);
     }
 }

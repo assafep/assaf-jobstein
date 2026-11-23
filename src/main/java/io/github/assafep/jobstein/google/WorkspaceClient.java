@@ -32,23 +32,41 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
             response.body().close();
             oauth.invalidateAccessToken(token);
             if(retryRead&&method.equals("GET"))return request(method,url,body,type,false);
-            throw new WorkspaceHttpException(401);
+            throw new WorkspaceHttpException(401, operation(method, URI.create(url).getPath()));
         }
         byte[] bytes;
         try(var input=response.body()){
             bytes=input.readNBytes(MAX_JSON_BYTES+1);
         }
         if(bytes.length>MAX_JSON_BYTES)throw new IOException("Workspace JSON response exceeds size limit");
-        if(response.statusCode()<200 || response.statusCode()>=300) throw new WorkspaceHttpException(response.statusCode());
+        if(response.statusCode()<200 || response.statusCode()>=300)
+            throw new WorkspaceHttpException(response.statusCode(), operation(method, URI.create(url).getPath()));
         String responseBody=new String(bytes,StandardCharsets.UTF_8);
         return responseBody.isBlank()?JSON.createObjectNode():JSON.readTree(responseBody);
     }
     private static String q(String s){return URLEncoder.encode(s,StandardCharsets.UTF_8);}
     private static String id(String s){if(s==null||!s.matches("[a-zA-Z0-9_-]+"))throw new IllegalArgumentException("Invalid resource ID");return s;}
+    // Keep request URLs and provider bodies out of diagnostics. These labels contain no user data.
+    private static String operation(String method, String path) {
+        if (path.equals("/drive/v3/files/generateIds")) return "Allocate a Drive file ID";
+        if (path.equals("/drive/v3/files"))
+            return method.equals("POST") ? "Create a Drive folder" : "List Drive files or folders";
+        if (path.startsWith("/drive/v3/files/")) return "Read a Drive file or folder";
+        if (path.equals("/upload/drive/v3/files")) return "Upload a Drive file";
+        if (path.startsWith("/upload/drive/v3/files/")) return "Update a Drive file";
+        if (path.equals("/v1/userinfo")) return "Read Google account identity";
+        return "Call Google Workspace";
+    }
     public static final class WorkspaceHttpException extends IOException {
         private final int status;
+        private final String operation;
         public int status(){return status;}
-        WorkspaceHttpException(int status){super("Google Workspace request failed (HTTP "+status+")");this.status=status;}
+        public String operation(){return operation;}
+        private WorkspaceHttpException(int status, String operation){
+            super("Google Workspace request failed (HTTP "+status+")");
+            this.status=status;
+            this.operation=operation;
+        }
     }
     public String ensureUpload(String parent,String name,String mime,byte[] data,String allocatedId)throws Exception{
         try{return uploadWithId(parent,name,mime,data,allocatedId);}
@@ -96,7 +114,8 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     }
     public String ensureFolderWithId(String parent,String name,String marker,String allocatedId)throws Exception{
         ObjectNode metadata=JSON.createObjectNode().put("name",name).put("mimeType","application/vnd.google-apps.folder");
-        metadata.putArray("parents").add(parent==null?"root":id(parent));
+        // Omitting parents creates the folder directly in My Drive.
+        if(parent!=null) metadata.putArray("parents").add(id(parent));
         metadata.putObject("appProperties").put("jobsteinId",marker);
         metadata.put("id",id(allocatedId));
         try{
@@ -112,12 +131,17 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
     }
     public void validateFolder(String folderId,String parent,String name,String marker)throws Exception{
         var actual=file(folderId);
-        String expectedParent=parent==null?id(file("root").path("id").asText()):id(parent);
         if(!folderId.equals(actual.path("id").asText())||!actual.path("trashed").isBoolean()||actual.path("trashed").asBoolean()||!actual.path("capabilities").path("canEdit").asBoolean()||
             !"application/vnd.google-apps.folder".equals(actual.path("mimeType").asText())||
-            !name.equals(actual.path("name").asText())||!marker.equals(actual.path("appProperties").path("jobsteinId").asText())||
-            !java.util.stream.StreamSupport.stream(actual.path("parents").spliterator(),false).anyMatch(v->expectedParent.equals(v.asText())))
+            !name.equals(actual.path("name").asText())||!marker.equals(actual.path("appProperties").path("jobsteinId").asText()))
             throw new IOException("Unexpected Drive folder metadata");
+        // Verify root membership through a search for the app's folder under the root alias.
+        // Reading metadata for My Drive itself requires access to a folder the app did not create.
+        var parents = actual.path("parents");
+        if (!parents.isArray() || parents.size() != 1 || !parents.get(0).isTextual() ||
+                (parent == null ? findFolder(null,name,marker).filter(folderId::equals).isEmpty()
+                    : !id(parent).equals(parents.get(0).asText())))
+            throw new IOException("Unexpected Drive folder parent");
     }
     public String allocateFileId() throws Exception {
         return id(request("GET","https://www.googleapis.com/drive/v3/files/generateIds?count=1&space=drive",null,null).path("ids").path(0).asText());
@@ -152,7 +176,8 @@ public final class WorkspaceClient implements io.github.assafep.jobstein.storage
             if(retry){response.body().close();return readBytes(fileId,limit,false);}
         }
         try(var input=response.body()){
-            if(response.statusCode()<200||response.statusCode()>=300)throw new WorkspaceHttpException(response.statusCode());
+            if(response.statusCode()<200||response.statusCode()>=300)
+                throw new WorkspaceHttpException(response.statusCode(), "Download a Drive file");
             byte[] bytes=input.readNBytes(limit+1);
             if(bytes.length>limit)throw new IOException("Download exceeds size limit");
             return bytes;

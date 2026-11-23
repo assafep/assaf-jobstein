@@ -84,7 +84,7 @@ Use a disposable Google account and development project for the first test. Live
    This prints the selected environment, its local directory, its `Type` (`live`, `sandbox`, or `production`), bound `GCP project`, and whether Google OAuth credentials are configured. A name other than `sandbox` or `production` is classified as `live`. Use the same `--env development` value on later commands.
 
 4. Authorize the Workspace account in the browser. This grant binds user-owned files to an account separately from the gcloud login. For the consent screen, the scopes are `openid`, `userinfo.email`, `drive.file`, `gmail.readonly`, `gmail.compose` and `calendar.events.readonly`. For a remote terminal, set up the tunnel below first.
-5. Choose the xAI model and enter credentials at the masked prompt. The runtime validates the default integration, then asks for the applicant's name and initializes the user and first role profile.
+5. At `AI integration name [default-ai]`, press Enter to accept the name or type your own. This name identifies the environment's default AI configuration. Choose the xAI model separately and enter credentials at the masked prompt. The runtime validates the default integration, then asks for the applicant's name and initializes the user and first role profile.
 6. The runtime uploads the PDF. Give consent before it sends extracted text and the target role to the AI provider. Review the displayed descriptor before approving activation. A successful final doctor report includes `Configured checks passed (no email sent)`.
 
 ### Authorize from a private Codespace

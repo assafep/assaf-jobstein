@@ -17,9 +17,30 @@ class DescriptorValidatorTest {
         return d;
     }
     @Test void acceptsSourceExcerpts()throws Exception{DescriptorValidator.validate(descriptor(),SOURCE);}
+    @Test void generatesSkillsFromEvidenceAndKeepsStoredValidationStrict() throws Exception {
+        var response = descriptor();
+        response.putArray("skills").add("Java development");
+        assertThrows(DiagnosticException.class, () -> DescriptorValidator.validate(response, SOURCE));
+        var prepared = DescriptorValidator.prepareGenerated(response, SOURCE);
+        assertEquals(prepared.path("skillEvidence"), prepared.path("skills"));
+        assertEquals("Java", prepared.path("skills").get(0).asText());
+        assertEquals("Java development", response.path("skills").get(0).asText());
+        response.remove("skills");
+        assertEquals(prepared, DescriptorValidator.prepareGenerated(response, SOURCE));
+    }
+
+    @Test void rejectsUnsupportedEvidenceWhenPreparingGeneratedSkills() {
+        var response = descriptor();
+        response.putArray("skillEvidence").add("invented skill");
+        assertThrows(DiagnosticException.class, () -> DescriptorValidator.prepareGenerated(response, SOURCE));
+    }
     @Test void rejectsInventedSkills(){
         var d=descriptor();d.putArray("skills").add("Kubernetes");d.putArray("skillEvidence").add("Kubernetes");
-        assertThrows(IOException.class,()->DescriptorValidator.validate(d,SOURCE));
+        var error=assertThrows(DiagnosticException.class,()->DescriptorValidator.validate(d,SOURCE));
+        String output=Diagnostics.describe(error);
+        assertTrue(output.startsWith("[DESCRIPTOR_INVALID] skillEvidence[0] does not match a verbatim excerpt"));
+        assertFalse(output.contains("Kubernetes"));
+        assertFalse(output.contains("Example Co"));
     }
     @Test void rejectsUnrelatedEvidence(){
         var d=descriptor();d.putArray("skills").add("Kubernetes");
@@ -27,7 +48,9 @@ class DescriptorValidatorTest {
     }
     @Test void rejectsUnexpectedClaims(){
         var d=descriptor();d.put("yearsOfExperience",20);
-        assertThrows(IOException.class,()->DescriptorValidator.validate(d,SOURCE));
+        var error=assertThrows(DiagnosticException.class,()->DescriptorValidator.validate(d,SOURCE));
+        assertTrue(Diagnostics.describe(error).contains("field outside the schema"));
+        assertFalse(Diagnostics.describe(error).contains("yearsOfExperience"));
     }
     @Test void rejectsWrongProfile(){
         var id=UUID.randomUUID();

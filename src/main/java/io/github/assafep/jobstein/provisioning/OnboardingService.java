@@ -35,6 +35,7 @@ public final class OnboardingService {
         try{action.run();state.record(id,ProvisioningStateRepository.Status.COMPLETED);progress.accept("Completed: "+id);}
         catch(Exception e){
             try{state.record(id,ProvisioningStateRepository.Status.FAILED);}catch(Exception persistence){e.addSuppressed(persistence);}
+            progress.accept("Failed: "+id);
             throw e;
         }
     }

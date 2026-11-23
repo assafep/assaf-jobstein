@@ -48,6 +48,10 @@ final class AdminCommand implements Callable<Integer> {
     private EnvironmentService environments;
     private Path directory;
     private PrintWriter out(){return spec.commandLine().getOut();}
+    private void progress(String message){
+        out().println(message);
+        out().flush();
+    }
     private String ask(String label,String value,String fallback){
         if(value!=null&&!value.isBlank())return value;
         if(nonInteractive){if(fallback!=null)return fallback;throw new IllegalArgumentException("Missing "+label);}
@@ -102,12 +106,15 @@ final class AdminCommand implements Callable<Integer> {
     }
     private void configureAi(boolean update,boolean defaultBinding)throws Exception{
         var service=ai();
-        String id=ask("Integration name",integration,defaultBinding?"standard":null);
-        var old=service.existing().map(AiConfiguration::integrations).orElse(Map.of()).get(id);
-        String selected=update&&old!=null?old.provider():provider;
+        var existing=service.existing();
+        String defaultName=defaultBinding?existing.map(AiConfiguration::defaultIntegration).orElse("default-ai"):null;
+        String id=ask("AI integration name",integration,defaultName);
+        var old=existing.map(AiConfiguration::integrations).orElse(Map.of()).get(id);
+        boolean updating=update||(defaultBinding&&old!=null);
+        String selected=updating&&old!=null?old.provider():provider;
         var definition=service.catalog().definition(selected);
         var values=new HashMap<String,String>();
-        if(update&&old!=null)values.putAll(old.configuration());
+        if(updating&&old!=null)values.putAll(old.configuration());
         var iterator=definition.path("fields").fields();
         while(iterator.hasNext()){
             var entry=iterator.next();String key=entry.getKey();var field=entry.getValue();
@@ -134,7 +141,7 @@ final class AdminCommand implements Callable<Integer> {
                 if(value!=null&&!value.isBlank())values.put(key,value);
             }
         }
-        service.put(id,new AiIntegrationConfig(selected,values),defaultBinding||makeDefault,update);
+        service.put(id,new AiIntegrationConfig(selected,values),defaultBinding||makeDefault,updating);
     }
     private String selectedProfile(){return ask("Profile slug",profile,null);}
     private Path selectedResume(){return Path.of(ask("Resume PDF",resume==null?null:resume.toString(),null));}
@@ -146,7 +153,7 @@ final class AdminCommand implements Callable<Integer> {
     }
     private void createProfile(String selectedRole)throws Exception{
         var service=users();
-        var workflow=new ProfileOnboarding(service);
+        var workflow=new ProfileOnboarding(service,this::progress);
         workflow.run(selectedRole,Optional.ofNullable(resume),this::selectedResume,
             ()->confirm("Allow configured AI provider to process resume contents",allowAi),
             descriptor->{out().println(descriptor.toPrettyString());return confirm("Approve descriptor and activate profile",approveDescriptor);});
@@ -174,7 +181,7 @@ final class AdminCommand implements Callable<Integer> {
     private int onboard()throws Exception{
         environments.create(env);
         var provisioning=new ProvisioningStateRepository(config);
-        OnboardingService.Action firstProfile=()->new FirstProfileOnboarding(provisioning,users()).run(
+        OnboardingService.Action firstProfile=()->new FirstProfileOnboarding(provisioning,users(),this::progress).run(
             Optional.ofNullable(role),()->ask("Target role",role,null),Optional.ofNullable(resume),this::selectedResume,
             ()->confirm("Allow configured AI provider to process resume contents",allowAi),
             descriptor->{out().println(descriptor.toPrettyString());return confirm("Approve descriptor and activate profile",approveDescriptor);});
@@ -209,7 +216,7 @@ final class AdminCommand implements Callable<Integer> {
                 case "google authorize":authorize();break;
                 case "google status":out().println(google().projectId());break;
                 case "google validate":new GcloudClient().verify(google().projectId());new WorkspaceClient(oauth()).validate();break;
-                case "ai configure":configureAi(ai().existing().map(c->c.integrations().containsKey(integration==null?"standard":integration)).orElse(false),true);break;
+                case "ai configure":configureAi(false,true);break;
                 case "ai validate":ai().validate();break;
                 case "ai provider list":ai().catalog().ids().stream().sorted().forEach(out()::println);break;
                 case "ai provider models":{var service=ai();var cfg=service.load();var selected=cfg.integrations().get(integration==null?cfg.defaultIntegration():integration);service.adapter(selected).models(selected).forEach(out()::println);break;}

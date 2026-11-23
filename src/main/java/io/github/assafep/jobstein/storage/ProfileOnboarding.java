@@ -5,13 +5,19 @@ import io.github.assafep.jobstein.domain.ApplicantProfile.Status;
 import io.github.assafep.jobstein.validation.DiagnosticException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Consumer;
 
 public final class ProfileOnboarding {
     @FunctionalInterface public interface ResumeSource {Path get()throws Exception;}
     @FunctionalInterface public interface Consent {boolean confirm()throws Exception;}
     @FunctionalInterface public interface Review {boolean approve(JsonNode descriptor)throws Exception;}
     private final UserProfileService service;
-    public ProfileOnboarding(UserProfileService service){this.service=Objects.requireNonNull(service);}
+    private final Consumer<String> progress;
+    public ProfileOnboarding(UserProfileService service){this(service,message->{});}
+    public ProfileOnboarding(UserProfileService service, Consumer<String> progress){
+        this.service=Objects.requireNonNull(service);
+        this.progress=Objects.requireNonNull(progress);
+    }
     public UserProfileService.ProfileState run(String role,Optional<Path> supplied,ResumeSource resumeSource,Consent consent,Review review)throws Exception{
         return run(role,Optional.empty(),supplied,resumeSource,consent,review);
     }
@@ -29,7 +35,7 @@ public final class ProfileOnboarding {
         }
         if(state.descriptorId()==null){
             if(!consent.confirm())throw new DiagnosticException(DiagnosticException.Code.AI_CONSENT_REQUIRED);
-            state=service.generateStored(slug);
+            state=service.generateStored(slug,progress);
         }
         if(review.approve(service.descriptor(slug))){
             service.activate(slug,true);
